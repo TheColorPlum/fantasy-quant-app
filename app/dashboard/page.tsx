@@ -4,170 +4,209 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { TrendingUp, TrendingDown, Minus, Users, Target, Zap } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { mockUser, mockTeams } from "@/lib/dummy-data"
+import { Terminal, TrendingUp, Users, Zap } from "lucide-react"
+import Link from "next/link"
+import { RosterTicker } from "@/components/roster-ticker"
 
 export default function Dashboard() {
-  const router = useRouter()
-  const userTeam = mockTeams.find((t) => t.id === mockUser.teamId)!
-  const usagePercentage = (mockUser.usageCount / mockUser.usageLimit) * 100
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case "up":
-        return <TrendingUp className="h-4 w-4 text-green-500" />
-      case "down":
-        return <TrendingDown className="h-4 w-4 text-red-500" />
-      default:
-        return <Minus className="h-4 w-4 text-gray-400" />
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0f0f0f] text-white">
       {/* Header */}
-      <div className="bg-white border-b">
+      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Fantasy Quant</h1>
-              <p className="text-gray-600">Mike's Fantasy League • {userTeam.name}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Trade Proposals Used</div>
-              <div className="text-lg font-semibold">
-                {mockUser.usageCount} / {mockUser.usageLimit}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Terminal className="h-6 w-6 text-[#22c55e]" />
+                <span className="text-xl font-bold font-mono">TRADEUP</span>
               </div>
-              <Progress value={usagePercentage} className="w-24 mt-1" />
+              <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
+                TRADING_TERMINAL
+              </Badge>
+            </div>
+
+            <div className="flex items-center space-x-6">
+              <div className="font-mono text-sm text-[#cbd5e1]">
+                SCANS_LEFT: <span className="text-[#f59e0b] font-semibold">3/5</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs border-[#f59e0b] text-[#f59e0b] hover:bg-[#f59e0b] hover:text-black bg-transparent"
+              >
+                UPGRADE
+              </Button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Quick Actions */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="h-5 w-5" />
-                  <span>Quick Actions</span>
-                </CardTitle>
-                <CardDescription>Generate trade proposals based on your team needs</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Button
-                    onClick={() => router.push("/trade-generator")}
-                    className="h-auto p-4 flex flex-col items-start space-y-2"
-                  >
-                    <Zap className="h-5 w-5" />
-                    <div className="text-left">
-                      <div className="font-semibold">Generate Trades</div>
-                      <div className="text-sm opacity-90">Find trade partners</div>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push("/rosters")}
-                    className="h-auto p-4 flex flex-col items-start space-y-2"
-                  >
-                    <Users className="h-5 w-5" />
-                    <div className="text-left">
-                      <div className="font-semibold">View All Rosters</div>
-                      <div className="text-sm opacity-70">League overview</div>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Your Team */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Team: {userTeam.name}</CardTitle>
-                <CardDescription>Current roster and player values</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {userTeam.players.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="outline">{player.position}</Badge>
-                        <div>
-                          <div className="font-medium">{player.name}</div>
-                          <div className="text-sm text-gray-500">{player.team}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {getTrendIcon(player.trend)}
-                        <div className="text-right">
-                          <div className="font-semibold">{player.value}</div>
-                          <div className={`text-xs ${player.weeklyChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            {player.weeklyChange >= 0 ? "+" : ""}
-                            {player.weeklyChange}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Trade Proposals</span>
-                      <span>
-                        {mockUser.usageCount} / {mockUser.usageLimit}
-                      </span>
-                    </div>
-                    <Progress value={usagePercentage} />
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {mockUser.usageLimit - mockUser.usageCount} proposals remaining this week
-                  </div>
-                  {!mockUser.isPremium && (
-                    <Button variant="outline" size="sm" className="w-full bg-transparent">
-                      Upgrade for Unlimited
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>League Info</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Teams:</span>
-                  <span>{mockTeams.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Scoring:</span>
-                  <span>PPR</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Season:</span>
-                  <span>2024</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Live Roster Moves Ticker */}
+        <div className="mb-8">
+          <RosterTicker />
         </div>
+
+        {/* Portfolio Overview */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+            <CardHeader>
+              <CardTitle className="font-mono text-[#22c55e]">YOUR_TEAM</CardTitle>
+              <CardDescription className="font-mono text-xs text-[#cbd5e1]">
+                ESPN League: Championship Dreams (ID: 1847392)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-sm text-[#cbd5e1]">CURRENT_RANK</span>
+                  <Badge className="bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20 font-mono text-xs">
+                    3rd of 12
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">TEAM_VALUE</span>
+                    <span className="text-[#22c55e]">$847.50</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">WEEKLY_PROJ</span>
+                    <span className="text-[#22c55e]">+12.3 PTS</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">RECORD</span>
+                    <span className="text-[#cbd5e1]">7-4</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#2a2a2a]">
+                <Link href="/rosters">
+                  <Button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold">
+                    VIEW_ALL_TEAMS
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+            <CardHeader>
+              <CardTitle className="font-mono text-[#22c55e]">TRADE_OPPORTUNITIES</CardTitle>
+              <CardDescription className="font-mono text-xs text-[#cbd5e1]">
+                Smart trades waiting for you
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-sm text-[#cbd5e1]">SCAN_STATUS</span>
+                  <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20 font-mono text-xs">READY</Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">LAST_SCAN</span>
+                    <span className="text-[#22c55e]">7 trades found</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">AVG_QUALITY</span>
+                    <span className="text-[#22c55e]">84.2%</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-xs">
+                    <span className="text-[#cbd5e1]">READY_TO_SEND</span>
+                    <span className="text-[#22c55e]">4</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#2a2a2a]">
+                <Link href="/trade-generator">
+                  <Button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold">
+                    FIND_NEW_TRADES
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <CardHeader>
+            <CardTitle className="font-mono text-[#22c55e]">QUICK_ACTIONS</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Link href="/trade-generator">
+                <Button
+                  variant="outline"
+                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
+                >
+                  <TrendingUp className="h-6 w-6 text-[#22c55e]" />
+                  <span className="font-mono text-xs">FIND_TRADES</span>
+                </Button>
+              </Link>
+
+              <Link href="/proposals">
+                <Button
+                  variant="outline"
+                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
+                >
+                  <Zap className="h-6 w-6 text-[#22c55e]" />
+                  <span className="font-mono text-xs">VIEW_PROPOSALS</span>
+                </Button>
+              </Link>
+
+              <Link href="/rosters">
+                <Button
+                  variant="outline"
+                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
+                >
+                  <Users className="h-6 w-6 text-[#22c55e]" />
+                  <span className="font-mono text-xs">ALL_TEAMS</span>
+                </Button>
+              </Link>
+
+              <Link href="/players">
+                <Button
+                  variant="outline"
+                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
+                >
+                  <Users className="h-6 w-6 text-[#22c55e]" />
+                  <span className="font-mono text-xs">ALL_PLAYERS</span>
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usage Tracking */}
+        <Card className="mt-8 bg-[#1a1a1a] border-[#f59e0b]/20">
+          <CardHeader>
+            <CardTitle className="font-mono text-[#f59e0b] flex items-center justify-between">
+              FREE_ACCOUNT_LIMITS
+              <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20 font-mono text-xs">FREE</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between font-mono text-sm">
+                <span className="text-[#cbd5e1]">WEEKLY_SCANS</span>
+                <span className="text-[#f59e0b]">3/5 remaining</span>
+              </div>
+              <Progress value={40} className="h-2 bg-[#2a2a2a]" />
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <div className="font-mono text-xs text-[#cbd5e1]">Upgrade for unlimited scans + advanced features</div>
+              <Button size="sm" className="bg-[#f59e0b] hover:bg-[#d97706] text-black font-mono font-semibold">
+                UPGRADE_NOW
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

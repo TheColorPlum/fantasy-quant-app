@@ -4,127 +4,219 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { ArrowLeft, Target, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Terminal, TrendingUp, Zap, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { mockUser } from "@/lib/dummy-data"
+import Link from "next/link"
 
 export default function TradeGenerator() {
-  const [targetPosition, setTargetPosition] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [selectedPosition, setSelectedPosition] = useState("")
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(0)
   const router = useRouter()
 
-  const handleGenerate = async () => {
-    if (!targetPosition) return
+  const handleExecuteScan = async () => {
+    if (!selectedPosition) return
 
-    setIsGenerating(true)
+    setIsScanning(true)
+    setScanProgress(0)
 
-    // Mock generation delay
-    setTimeout(() => {
-      setIsGenerating(false)
-      router.push("/proposals")
-    }, 2000)
+    // Simulate scanning progress
+    const interval = setInterval(() => {
+      setScanProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval)
+          setTimeout(() => {
+            router.push("/proposals")
+          }, 500)
+          return 100
+        }
+        return prev + 10
+      })
+    }, 200)
   }
 
-  const remainingProposals = mockUser.usageLimit - mockUser.usageCount
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0f0f0f] text-white">
       {/* Header */}
-      <div className="bg-white border-b">
+      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Generate Trade Proposals</h1>
-              <p className="text-gray-600">
-                Leverage data analytics to find the best roster optimization opportunities
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link href="/dashboard" className="flex items-center space-x-2">
+                <Terminal className="h-6 w-6 text-[#22c55e]" />
+                <span className="text-xl font-bold font-mono">FANTASYQUANT</span>
+              </Link>
+              <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
+                ARBITRAGE_DETECTION_ENGINE
+              </Badge>
+            </div>
+
+            <div className="flex items-center space-x-6">
+              <div className="font-mono text-sm text-[#94a3b8]">
+                PROPOSALS_REMAINING: <span className="text-[#f59e0b] font-semibold">3/5</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs border-[#f59e0b] text-[#f59e0b] hover:bg-[#f59e0b] hover:text-black bg-transparent"
+              >
+                UPGRADE_ACCOUNT
+              </Button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Target className="h-5 w-5" />
-              <span>Trade Target</span>
-            </CardTitle>
-            <CardDescription>Select the position you want to improve through trades</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="position">Target Position</Label>
-              <Select value={targetPosition} onValueChange={setTargetPosition}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select position to target" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="QB">Quarterback (QB)</SelectItem>
-                  <SelectItem value="RB">Running Back (RB)</SelectItem>
-                  <SelectItem value="WR">Wide Receiver (WR)</SelectItem>
-                  <SelectItem value="TE">Tight End (TE)</SelectItem>
-                  <SelectItem value="FLEX">Flex (RB/WR/TE)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-gray-500">
-                The algorithm will find teams with surplus at this position and generate fair trade proposals
-              </p>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-2">How it works:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Analyzes all league rosters for positional needs</li>
-                <li>• Finds teams with surplus at your target position</li>
-                <li>• Calculates fair value trades using current player values</li>
-                <li>• Identifies buy-low/sell-high opportunities</li>
-                <li>• Generates ready-to-send trade messages</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium">Remaining Proposals</div>
-                <div className="text-sm text-gray-600">
-                  {remainingProposals} of {mockUser.usageLimit} this week
-                </div>
-              </div>
-              {!mockUser.isPremium && remainingProposals <= 2 && (
-                <Button variant="outline" size="sm">
-                  Upgrade for Unlimited
-                </Button>
-              )}
-            </div>
-
-            <Button
-              onClick={handleGenerate}
-              disabled={!targetPosition || isGenerating || remainingProposals === 0}
-              className="w-full"
-              size="lg"
-            >
-              {isGenerating ? (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Main Scanner Interface */}
+          <Card className="mb-8 bg-[#1a1a1a] border-[#2a2a2a] terminal-glow">
+            <CardHeader className="text-center">
+              <CardTitle className="font-mono text-2xl text-[#22c55e] flex items-center justify-center gap-2">
+                <TrendingUp className="h-6 w-6" />
+                ARBITRAGE_DETECTION_ENGINE
+              </CardTitle>
+              <CardDescription className="font-mono text-sm text-[#94a3b8]">
+                INITIALIZE_MARKET_INEFFICIENCY_SCAN
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!isScanning ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing League & Generating Proposals...
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="font-mono text-sm text-[#cbd5e1]">TARGET_POSITION_CLASS</label>
+                      <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+                        <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] font-mono">
+                          <SelectValue placeholder="SELECT_ASSET_CLASS" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                          <SelectItem value="QB" className="font-mono">
+                            QB - QUARTERBACK_ASSETS
+                          </SelectItem>
+                          <SelectItem value="RB" className="font-mono">
+                            RB - RUNNING_BACK_SECURITIES
+                          </SelectItem>
+                          <SelectItem value="WR" className="font-mono">
+                            WR - WIDE_RECEIVER_COMMODITIES
+                          </SelectItem>
+                          <SelectItem value="TE" className="font-mono">
+                            TE - TIGHT_END_DERIVATIVES
+                          </SelectItem>
+                          <SelectItem value="FLEX" className="font-mono">
+                            FLEX - DIVERSIFIED_PORTFOLIO
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4 space-y-2">
+                      <div className="font-mono text-xs text-[#94a3b8] mb-2">SCAN_PARAMETERS:</div>
+                      <div className="grid grid-cols-2 gap-4 font-mono text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-[#94a3b8]">COUNTERPARTIES:</span>
+                          <span className="text-[#22c55e]">11</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#94a3b8]">CONFIDENCE_MIN:</span>
+                          <span className="text-[#22c55e]">75%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#94a3b8]">VALUE_TOLERANCE:</span>
+                          <span className="text-[#22c55e]">±10%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#94a3b8]">MAX_POSITIONS:</span>
+                          <span className="text-[#22c55e]">3</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleExecuteScan}
+                    disabled={!selectedPosition}
+                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-bold text-lg py-6"
+                  >
+                    <Zap className="mr-2 h-5 w-5" />
+                    EXECUTE_ARBITRAGE_SCAN
+                  </Button>
                 </>
               ) : (
-                `Generate Trade Proposals for ${targetPosition || "Position"}`
-              )}
-            </Button>
+                <div className="space-y-6 text-center">
+                  <div className="space-y-2">
+                    <div className="font-mono text-lg text-[#22c55e]">SCANNING_MARKET_INEFFICIENCIES...</div>
+                    <div className="font-mono text-sm text-[#94a3b8]">
+                      ANALYZING_{selectedPosition}_ARBITRAGE_OPPORTUNITIES
+                    </div>
+                  </div>
 
-            {remainingProposals === 0 && (
-              <p className="text-sm text-red-600 text-center">
-                You've used all your free proposals this week. Upgrade for unlimited access.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Progress value={scanProgress} className="h-3 bg-[#2a2a2a]" />
+                    <div className="font-mono text-xs text-[#94a3b8]">PROGRESS: {scanProgress}% COMPLETE</div>
+                  </div>
+
+                  <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                    <div className="font-mono text-xs text-[#94a3b8] space-y-1">
+                      <div>→ FETCHING_PORTFOLIO_DATA...</div>
+                      <div>→ CALCULATING_CORRELATION_MATRIX...</div>
+                      <div>→ IDENTIFYING_VALUE_DISCREPANCIES...</div>
+                      <div>→ GENERATING_TRADE_PROPOSALS...</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Usage Warning */}
+          <Card className="bg-[#1a1a1a] border-[#f59e0b]/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="h-5 w-5 text-[#f59e0b]" />
+                <div className="flex-1">
+                  <div className="font-mono text-sm text-[#f59e0b]">ACCOUNT_LIMITATION_WARNING</div>
+                  <div className="font-mono text-xs text-[#94a3b8] mt-1">
+                    Free tier accounts limited to 5 scans per week.
+                    <span className="text-[#f59e0b]"> 3 scans remaining.</span>
+                  </div>
+                </div>
+                <Button size="sm" className="bg-[#f59e0b] hover:bg-[#d97706] text-black font-mono font-semibold">
+                  UPGRADE
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Advanced Settings Teaser */}
+          <Card className="mt-6 bg-[#1a1a1a] border-[#2a2a2a] opacity-60">
+            <CardHeader>
+              <CardTitle className="font-mono text-[#94a3b8] flex items-center justify-between">
+                ADVANCED_PARAMETERS
+                <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20 font-mono text-xs">
+                  PREMIUM_ONLY
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 opacity-50">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-[#94a3b8]">VOLATILITY_WEIGHT</label>
+                  <div className="h-9 bg-[#0f0f0f] border border-[#2a2a2a] rounded-md"></div>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-[#94a3b8]">CORRELATION_THRESHOLD</label>
+                  <div className="h-9 bg-[#0f0f0f] border border-[#2a2a2a] rounded-md"></div>
+                </div>
+              </div>
+              <div className="font-mono text-xs text-[#94a3b8] text-center pt-2">
+                Unlock advanced quantitative controls with premium subscription
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

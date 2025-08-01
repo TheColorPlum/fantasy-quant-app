@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, Loader2, AlertCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Terminal, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { mockTeams } from "@/lib/dummy-data"
 
 export default function LeagueSetup() {
   const [leagueId, setLeagueId] = useState("")
@@ -23,111 +22,197 @@ export default function LeagueSetup() {
     if (!leagueId) return
 
     setIsValidating(true)
+    setValidationStatus("idle")
 
-    // Mock validation - simulate API call
-    setTimeout(() => {
-      if (leagueId === "123456" || leagueId.length >= 6) {
-        setValidationStatus("success")
-        setLeagueData({
-          name: "Mike's Fantasy League",
-          teams: mockTeams,
-          season: 2024,
-          scoring: "PPR",
-        })
-      } else {
-        setValidationStatus("error")
-      }
-      setIsValidating(false)
-    }, 1500)
+    // Simulate API validation
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    if (leagueId === "123456") {
+      setValidationStatus("error")
+      setLeagueData(null)
+    } else {
+      setValidationStatus("success")
+      setLeagueData({
+        name: "Championship Dreams",
+        season: "2024",
+        teams: [
+          "Team Mahomes",
+          "Team Allen",
+          "Team Burrow",
+          "Team Herbert",
+          "Team Jackson",
+          "Team Hurts",
+          "Team Tua",
+          "Team Wilson",
+          "Team Lawrence",
+          "Team Murray",
+          "Team Prescott",
+          "Team Rodgers",
+        ],
+        scoring: "PPR",
+        size: 12,
+      })
+    }
+
+    setIsValidating(false)
   }
 
-  const handleConnect = () => {
-    if (selectedTeam) {
-      router.push("/dashboard")
-    }
+  const handleConnect = async () => {
+    if (!selectedTeam) return
+
+    // Simulate connection
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    router.push("/dashboard")
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Connect Your ESPN League</h1>
-          <p className="text-gray-600">Link your league to Fantasy Quant for intelligent roster management</p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>League Connection</CardTitle>
-            <CardDescription>Find your league ID in your ESPN fantasy football league URL</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="league-id">ESPN League ID</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="league-id"
-                  placeholder="e.g., 123456789"
-                  value={leagueId}
-                  onChange={(e) => {
-                    setLeagueId(e.target.value)
-                    setValidationStatus("idle")
-                    setLeagueData(null)
-                  }}
-                />
-                <Button onClick={handleValidateLeague} disabled={!leagueId || isValidating} variant="outline">
-                  {isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Validate"}
-                </Button>
-              </div>
-              <p className="text-sm text-gray-500">Your league must be public or you must be logged into ESPN</p>
+    <div className="min-h-screen bg-[#0f0f0f] text-white">
+      {/* Header */}
+      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Terminal className="h-6 w-6 text-[#22c55e]" />
+              <span className="text-xl font-bold font-mono">FANTASYQUANT</span>
             </div>
+            <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
+              CONNECTION_PROTOCOL
+            </Badge>
+          </div>
+        </div>
+      </header>
 
-            {validationStatus === "error" && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Could not find league with that ID. Make sure your league is public or try logging into ESPN first.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {validationStatus === "success" && leagueData && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Successfully connected to "{leagueData.name}" - {leagueData.season} {leagueData.scoring} League
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {leagueData && (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Main Setup Card */}
+          <Card className="bg-[#1a1a1a] border-[#2a2a2a] terminal-glow">
+            <CardHeader className="text-center">
+              <CardTitle className="font-mono text-2xl text-[#22c55e]">PORTFOLIO_CONNECTION_PROTOCOL</CardTitle>
+              <CardDescription className="font-mono text-sm text-[#94a3b8]">
+                ESTABLISH_DATA_PIPELINE_TO_ESPN_SERVERS
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* League ID Input */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="team-select">Select Your Team</Label>
-                  <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose your team from the league" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leagueData.teams.map((team: any) => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name} ({team.owner})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="league-id" className="font-mono text-sm text-[#cbd5e1]">
+                    ESPN_LEAGUE_IDENTIFIER
+                  </Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="league-id"
+                      value={leagueId}
+                      onChange={(e) => setLeagueId(e.target.value)}
+                      placeholder="Enter ESPN League ID (e.g., 1847392)"
+                      className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm flex-1"
+                    />
+                    <Button
+                      onClick={handleValidateLeague}
+                      disabled={!leagueId || isValidating}
+                      className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold px-6"
+                    >
+                      {isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "VALIDATE"}
+                    </Button>
+                  </div>
                 </div>
 
-                <Button onClick={handleConnect} disabled={!selectedTeam} className="w-full">
-                  Connect League & Continue
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                {/* Validation Status */}
+                {validationStatus === "success" && leagueData && (
+                  <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <CheckCircle className="h-5 w-5 text-[#22c55e]" />
+                      <div className="font-mono text-sm text-[#22c55e]">CONNECTION_ESTABLISHED</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 font-mono text-xs">
+                      <div className="space-y-1">
+                        <div className="text-[#94a3b8]">LEAGUE_NAME</div>
+                        <div className="text-[#cbd5e1]">{leagueData.name}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[#94a3b8]">SEASON</div>
+                        <div className="text-[#cbd5e1]">{leagueData.season}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[#94a3b8]">SCORING_FORMAT</div>
+                        <div className="text-[#cbd5e1]">{leagueData.scoring}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[#94a3b8]">PARTICIPANTS</div>
+                        <div className="text-[#cbd5e1]">{leagueData.size} TEAMS</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-        <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Need help finding your league ID?</p>
-          <p>Go to your league page on ESPN and copy the number from the URL</p>
+                {validationStatus === "error" && (
+                  <div className="bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-5 w-5 text-[#ef4444]" />
+                      <div className="font-mono text-sm text-[#ef4444]">
+                        CONNECTION_FAILED: Invalid league ID or private league detected
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Team Selection */}
+              {validationStatus === "success" && leagueData && (
+                <div className="space-y-4 border-t border-[#2a2a2a] pt-6">
+                  <div className="space-y-2">
+                    <Label className="font-mono text-sm text-[#cbd5e1]">SELECT_YOUR_PORTFOLIO</Label>
+                    <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                      <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] font-mono">
+                        <SelectValue placeholder="CHOOSE_TEAM_IDENTIFIER" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                        {leagueData.teams.map((team: string, index: number) => (
+                          <SelectItem key={index} value={team} className="font-mono">
+                            {team}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleConnect}
+                    disabled={!selectedTeam}
+                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-bold text-lg py-6"
+                  >
+                    INITIALIZE_TRADING_TERMINAL
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Instructions */}
+          <Card className="mt-6 bg-[#1a1a1a] border-[#2a2a2a]">
+            <CardHeader>
+              <CardTitle className="font-mono text-[#22c55e]">CONNECTION_REQUIREMENTS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 font-mono text-sm text-[#94a3b8]">
+              <div className="flex items-start space-x-2">
+                <div className="text-[#22c55e] mt-1">→</div>
+                <div>
+                  ESPN league must be set to <span className="text-[#cbd5e1]">PUBLIC</span> visibility
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <div className="text-[#22c55e] mt-1">→</div>
+                <div>
+                  League ID found in ESPN URL:{" "}
+                  <span className="text-[#cbd5e1]">fantasy.espn.com/football/league?leagueId=XXXXXX</span>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <div className="text-[#22c55e] mt-1">→</div>
+                <div>Private leagues require additional authentication protocols</div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
