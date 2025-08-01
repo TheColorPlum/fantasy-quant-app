@@ -1,213 +1,265 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Terminal, TrendingUp, Users, Zap } from "lucide-react"
-import Link from "next/link"
+import { AuthGuard } from "@/components/auth-guard"
 import { RosterTicker } from "@/components/roster-ticker"
+import { TrendingUp, Users, Target, BarChart3, Clock, Trophy, ArrowRight, Zap } from "lucide-react"
+import Link from "next/link"
 
-export default function Dashboard() {
+interface UserProfile {
+  id: string
+  email: string
+  name: string
+  isPremium: boolean
+  scansRemaining: number
+}
+
+interface Analytics {
+  totalAnalyses: number
+  avgConfidence: number
+  topPartners: string[]
+  recentAnalyses: Array<{
+    id: string
+    partner: string
+    confidence: number
+    createdAt: string
+  }>
+}
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch("/api/user/profile")
+        const data = await response.json()
+
+        if (data.success) {
+          setUser(data.user)
+          setAnalytics(data.analytics)
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-center">
+            <div className="h-8 w-8 animate-spin border-2 border-green-400 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-slate-400">Loading dashboard...</p>
+          </div>
+        </div>
+      </AuthGuard>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header */}
-      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Terminal className="h-6 w-6 text-[#22c55e]" />
-                <span className="text-xl font-bold font-mono">TRADEUP</span>
+    <AuthGuard>
+      <div className="min-h-screen bg-black text-slate-100">
+        {/* Header */}
+        <div className="border-b border-gray-800 bg-gray-900/50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="h-8 w-8 text-green-400" />
+                <div>
+                  <h1 className="text-2xl font-bold text-green-400 font-mono">TRADEUP</h1>
+                  <p className="text-xs text-slate-400">TRADING_TERMINAL_v2.1</p>
+                </div>
               </div>
-              <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
-                TRADING_TERMINAL
-              </Badge>
-            </div>
-
-            <div className="flex items-center space-x-6">
-              <div className="font-mono text-sm text-[#cbd5e1]">
-                SCANS_LEFT: <span className="text-[#f59e0b] font-semibold">3/5</span>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-slate-300">Welcome back, {user?.name}</p>
+                  <p className="text-xs text-slate-400">
+                    SCANS_LEFT: <span className="text-green-400">{user?.scansRemaining || 0}</span>
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-slate-300 hover:bg-gray-800 bg-transparent"
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" })
+                    window.location.href = "/auth/login"
+                  }}
+                >
+                  LOGOUT
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs border-[#f59e0b] text-[#f59e0b] hover:bg-[#f59e0b] hover:text-black bg-transparent"
-              >
-                UPGRADE
-              </Button>
             </div>
           </div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Live Roster Moves Ticker */}
-        <div className="mb-8">
-          <RosterTicker />
-        </div>
+        {/* Ticker */}
+        <RosterTicker />
 
-        {/* Portfolio Overview */}
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader>
-              <CardTitle className="font-mono text-[#22c55e]">YOUR_TEAM</CardTitle>
-              <CardDescription className="font-mono text-xs text-[#cbd5e1]">
-                ESPN League: Championship Dreams (ID: 1847392)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-mono text-sm text-[#cbd5e1]">CURRENT_RANK</span>
-                  <Badge className="bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20 font-mono text-xs">
-                    3rd of 12
-                  </Badge>
+        <div className="container mx-auto px-4 py-8">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card className="bg-gray-900 border-gray-800 hover:border-green-400/50 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-400" />
+                  <CardTitle className="text-slate-100 text-lg">FIND_TRADES</CardTitle>
                 </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-4">Discover optimal trade opportunities using AI analysis</p>
+                <Link href="/proposals">
+                  <Button className="w-full bg-green-600 hover:bg-green-700 text-black font-semibold">
+                    <Zap className="mr-2 h-4 w-4" />
+                    EXECUTE_SCAN
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">TEAM_VALUE</span>
-                    <span className="text-[#22c55e]">$847.50</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">WEEKLY_PROJ</span>
-                    <span className="text-[#22c55e]">+12.3 PTS</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">RECORD</span>
-                    <span className="text-[#cbd5e1]">7-4</span>
-                  </div>
+            <Card className="bg-gray-900 border-gray-800 hover:border-blue-400/50 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-400" />
+                  <CardTitle className="text-slate-100 text-lg">ALL_PLAYERS</CardTitle>
                 </div>
-              </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-4">Browse complete player database with advanced filtering</p>
+                <Link href="/players">
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-700 text-slate-300 hover:bg-gray-800 bg-transparent"
+                  >
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    VIEW_DATABASE
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
 
-              <div className="pt-4 border-t border-[#2a2a2a]">
+            <Card className="bg-gray-900 border-gray-800 hover:border-purple-400/50 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-purple-400" />
+                  <CardTitle className="text-slate-100 text-lg">YOUR_TEAM</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-4">Manage rosters and view team analytics</p>
                 <Link href="/rosters">
-                  <Button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold">
-                    VIEW_ALL_TEAMS
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-700 text-slate-300 hover:bg-gray-800 bg-transparent"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    VIEW_ROSTERS
                   </Button>
                 </Link>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader>
-              <CardTitle className="font-mono text-[#22c55e]">TRADE_OPPORTUNITIES</CardTitle>
-              <CardDescription className="font-mono text-xs text-[#cbd5e1]">
-                Smart trades waiting for you
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-mono text-sm text-[#cbd5e1]">SCAN_STATUS</span>
-                  <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20 font-mono text-xs">READY</Badge>
-                </div>
+          {/* Analytics Dashboard */}
+          {analytics && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Trade Statistics */}
+              <Card className="bg-gray-900 border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-slate-100 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-green-400" />
+                    TRADE_ANALYTICS
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">Your trading performance metrics</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-gray-800 rounded-lg">
+                      <p className="text-2xl font-bold text-green-400">{analytics.totalAnalyses}</p>
+                      <p className="text-xs text-slate-400">TOTAL_SCANS</p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-800 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-400">{analytics.avgConfidence}%</p>
+                      <p className="text-xs text-slate-400">AVG_CONFIDENCE</p>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">LAST_SCAN</span>
-                    <span className="text-[#22c55e]">7 trades found</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">AVG_QUALITY</span>
-                    <span className="text-[#22c55e]">84.2%</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-xs">
-                    <span className="text-[#cbd5e1]">READY_TO_SEND</span>
-                    <span className="text-[#22c55e]">4</span>
-                  </div>
-                </div>
-              </div>
+                  {analytics.topPartners.length > 0 && (
+                    <div>
+                      <p className="text-sm text-slate-300 mb-2">TOP_PARTNERS:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {analytics.topPartners.map((partner, index) => (
+                          <Badge key={index} variant="outline" className="border-gray-700 text-slate-300">
+                            {partner}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-              <div className="pt-4 border-t border-[#2a2a2a]">
-                <Link href="/trade-generator">
-                  <Button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold">
-                    FIND_NEW_TRADES
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+              {/* Recent Activity */}
+              <Card className="bg-gray-900 border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-slate-100 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-400" />
+                    RECENT_ACTIVITY
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">Your latest trade analyses</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analytics.recentAnalyses.length > 0 ? (
+                    <div className="space-y-3">
+                      {analytics.recentAnalyses.map((analysis) => (
+                        <div key={analysis.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                          <div>
+                            <p className="text-sm text-slate-300 font-medium">{analysis.partner}</p>
+                            <p className="text-xs text-slate-400">
+                              {new Date(analysis.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-green-400 font-semibold">{analysis.confidence}%</p>
+                            <p className="text-xs text-slate-400">CONFIDENCE</p>
+                          </div>
+                        </div>
+                      ))}
+                      <Link href="/proposals">
+                        <Button variant="ghost" className="w-full text-slate-400 hover:text-slate-300">
+                          View All Analyses
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Target className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                      <p className="text-slate-400 mb-4">No trade analyses yet</p>
+                      <Link href="/proposals">
+                        <Button className="bg-green-600 hover:bg-green-700 text-black font-semibold">
+                          Run Your First Scan
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
-
-        {/* Quick Actions */}
-        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-          <CardHeader>
-            <CardTitle className="font-mono text-[#22c55e]">QUICK_ACTIONS</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Link href="/trade-generator">
-                <Button
-                  variant="outline"
-                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
-                >
-                  <TrendingUp className="h-6 w-6 text-[#22c55e]" />
-                  <span className="font-mono text-xs">FIND_TRADES</span>
-                </Button>
-              </Link>
-
-              <Link href="/proposals">
-                <Button
-                  variant="outline"
-                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
-                >
-                  <Zap className="h-6 w-6 text-[#22c55e]" />
-                  <span className="font-mono text-xs">VIEW_PROPOSALS</span>
-                </Button>
-              </Link>
-
-              <Link href="/rosters">
-                <Button
-                  variant="outline"
-                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
-                >
-                  <Users className="h-6 w-6 text-[#22c55e]" />
-                  <span className="font-mono text-xs">ALL_TEAMS</span>
-                </Button>
-              </Link>
-
-              <Link href="/players">
-                <Button
-                  variant="outline"
-                  className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-[#2a2a2a] hover:bg-[#2a2a2a] bg-transparent text-[#cbd5e1]"
-                >
-                  <Users className="h-6 w-6 text-[#22c55e]" />
-                  <span className="font-mono text-xs">ALL_PLAYERS</span>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Usage Tracking */}
-        <Card className="mt-8 bg-[#1a1a1a] border-[#f59e0b]/20">
-          <CardHeader>
-            <CardTitle className="font-mono text-[#f59e0b] flex items-center justify-between">
-              FREE_ACCOUNT_LIMITS
-              <Badge className="bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20 font-mono text-xs">FREE</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between font-mono text-sm">
-                <span className="text-[#cbd5e1]">WEEKLY_SCANS</span>
-                <span className="text-[#f59e0b]">3/5 remaining</span>
-              </div>
-              <Progress value={40} className="h-2 bg-[#2a2a2a]" />
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-              <div className="font-mono text-xs text-[#cbd5e1]">Upgrade for unlimited scans + advanced features</div>
-              <Button size="sm" className="bg-[#f59e0b] hover:bg-[#d97706] text-black font-mono font-semibold">
-                UPGRADE_NOW
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-    </div>
+    </AuthGuard>
   )
 }
