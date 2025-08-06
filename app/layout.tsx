@@ -5,6 +5,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Terminal, Heart, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -34,6 +35,25 @@ export default function RootLayout({
     }
   }
 
+  const getPageBadge = () => {
+    switch (pathname) {
+      case '/trades':
+        return 'FIND_TRADES'
+      case '/proposals':
+        return 'MY_PROPOSALS'
+      case '/rosters':
+        return 'VIEW_ROSTERS'
+      case '/players':
+        return 'ALL_PLAYERS'
+      case '/settings':
+        return 'SETTINGS'
+      case '/upgrade':
+        return 'UPGRADE'
+      default:
+        return 'TRADEUP'
+    }
+  }
+
   return (
     <html lang="en">
       <body className={inter.className}>
@@ -47,10 +67,15 @@ export default function RootLayout({
             <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
               <div className="container mx-auto px-4 py-4">
                 <div className="flex items-center justify-between">
-                  <Link href="/dashboard" className="flex items-center space-x-2">
-                    <Terminal className="h-6 w-6 text-[#22c55e]" />
-                    <span className="text-xl font-bold font-mono text-white">TRADEUP</span>
-                  </Link>
+                  <div className="flex items-center space-x-4">
+                    <Link href="/dashboard" className="flex items-center space-x-2">
+                      <Terminal className="h-6 w-6 text-[#22c55e]" />
+                      <span className="text-xl font-bold font-mono text-white">TRADEUP</span>
+                    </Link>
+                    <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
+                      {getPageBadge()}
+                    </Badge>
+                  </div>
                   <div className="flex items-center space-x-4">
                     <Button
                       onClick={() => setShowDonateModal(true)}
