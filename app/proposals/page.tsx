@@ -320,9 +320,9 @@ export default function ProposalsPage() {
                         }`}
                       >
                         {proposal.valueDifferential > 0 ? "+" : ""}
-                        {proposal.valueDifferential.toFixed(1)}
+                        ${proposal.valueDifferential.toFixed(1)}
                       </div>
-                      <div className="text-[#94a3b8] text-xs">FANTASY POINTS</div>
+                      <div className="text-[#94a3b8] text-xs">DOLLAR VALUE</div>
                     </div>
 
                     {/* Trade Details */}
@@ -331,7 +331,7 @@ export default function ProposalsPage() {
                         <div className="flex items-center justify-between">
                           <p className="font-mono text-xs text-[#94a3b8]">YOU_TRADE:</p>
                           <p className="font-mono text-xs text-[#ef4444]">
-                            -{calculateTotalValue(proposal.yourPlayers).toFixed(1)} PTS
+                            -${calculateTotalValue(proposal.yourPlayers).toFixed(1)}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -352,7 +352,7 @@ export default function ProposalsPage() {
                                 </div>
                                 {getTrendIcon(player.trend)}
                               </div>
-                              <div className="text-xs text-[#94a3b8]">{player.value.toFixed(1)}</div>
+                              <div className="text-xs text-[#94a3b8]">${player.value.toFixed(1)}</div>
                             </div>
                           ))}
                         </div>
@@ -362,7 +362,7 @@ export default function ProposalsPage() {
                         <div className="flex items-center justify-between">
                           <p className="font-mono text-xs text-[#94a3b8]">YOU_RECEIVE:</p>
                           <p className="font-mono text-xs text-[#22c55e]">
-                            +{calculateTotalValue(proposal.theirPlayers).toFixed(1)} PTS
+                            +${calculateTotalValue(proposal.theirPlayers).toFixed(1)}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -383,7 +383,7 @@ export default function ProposalsPage() {
                                 </div>
                                 {getTrendIcon(player.trend)}
                               </div>
-                              <div className="text-xs text-[#94a3b8]">{player.value.toFixed(1)}</div>
+                              <div className="text-xs text-[#94a3b8]">${player.value.toFixed(1)}</div>
                             </div>
                           ))}
                         </div>
