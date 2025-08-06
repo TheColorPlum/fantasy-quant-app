@@ -420,104 +420,104 @@ export default function ProposalsPage() {
                           </div>
                           <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">{proposal.message}</p>
                         </div>
+
+                        {/* Trade Intelligence - incorporated directly */}
+                        <div className="space-y-4">
+                          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <MessageSquare className="h-4 w-4 text-[#22c55e]" />
+                              <p className="font-mono text-xs text-[#94a3b8]">WHY_IT_WORKS:</p>
+                            </div>
+                            <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
+                              {proposal.context.whyItWorks}
+                            </p>
+                          </div>
+
+                          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Clock className="h-4 w-4 text-[#f59e0b]" />
+                              <p className="font-mono text-xs text-[#94a3b8]">TIMING_ADVICE:</p>
+                            </div>
+                            <p className="font-mono text-sm text-[#22c55e] mb-2">
+                              {proposal.context.timingAdvice.bestTiming}
+                            </p>
+                            <p className="font-mono text-xs text-[#cbd5e1] mb-3">
+                              {proposal.context.timingAdvice.reasoning}
+                            </p>
+
+                            {proposal.context.timingAdvice.riskFactors.length > 0 && (
+                              <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                  <AlertTriangle className="h-3 w-3 text-[#ef4444]" />
+                                  <p className="font-mono text-xs text-[#ef4444]">RISK_FACTORS:</p>
+                                </div>
+                                {proposal.context.timingAdvice.riskFactors.map((risk, index) => (
+                                  <p key={index} className="font-mono text-xs text-[#94a3b8] ml-5">
+                                    • {risk}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {proposal.context.negotiationBackup && (
+                            <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                              <p className="font-mono text-xs text-[#94a3b8] mb-2">NEGOTIATION_BACKUP:</p>
+                              <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
+                                {proposal.context.negotiationBackup}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 pt-4">
+                          {sentTrades.has(proposal.id) ? (
+                            <Button
+                              disabled
+                              className="flex-1 bg-[#22c55e]/20 text-[#22c55e] font-mono font-semibold cursor-not-allowed"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              TRADE_SENT
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleSendTrade(proposal.id)
+                                }}
+                                disabled={sendingTrade === proposal.id}
+                                className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                              >
+                                {sendingTrade === proposal.id ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                                    SENDING...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    SEND_TRADE
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleModifyTrade(proposal)
+                                }}
+                                variant="outline"
+                                className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                MODIFY
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </CollapsibleContent>
                     </Collapsible>
-
-                    {/* Trade Intelligence - incorporated directly */}
-                    <div className="space-y-4">
-                      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <MessageSquare className="h-4 w-4 text-[#22c55e]" />
-                          <p className="font-mono text-xs text-[#94a3b8]">WHY_IT_WORKS:</p>
-                        </div>
-                        <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
-                          {proposal.context.whyItWorks}
-                        </p>
-                      </div>
-
-                      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Clock className="h-4 w-4 text-[#f59e0b]" />
-                          <p className="font-mono text-xs text-[#94a3b8]">TIMING_ADVICE:</p>
-                        </div>
-                        <p className="font-mono text-sm text-[#22c55e] mb-2">
-                          {proposal.context.timingAdvice.bestTiming}
-                        </p>
-                        <p className="font-mono text-xs text-[#cbd5e1] mb-3">
-                          {proposal.context.timingAdvice.reasoning}
-                        </p>
-
-                        {proposal.context.timingAdvice.riskFactors.length > 0 && (
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              <AlertTriangle className="h-3 w-3 text-[#ef4444]" />
-                              <p className="font-mono text-xs text-[#ef4444]">RISK_FACTORS:</p>
-                            </div>
-                            {proposal.context.timingAdvice.riskFactors.map((risk, index) => (
-                              <p key={index} className="font-mono text-xs text-[#94a3b8] ml-5">
-                                • {risk}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {proposal.context.negotiationBackup && (
-                        <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                          <p className="font-mono text-xs text-[#94a3b8] mb-2">NEGOTIATION_BACKUP:</p>
-                          <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
-                            {proposal.context.negotiationBackup}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4">
-                      {sentTrades.has(proposal.id) ? (
-                        <Button
-                          disabled
-                          className="flex-1 bg-[#22c55e]/20 text-[#22c55e] font-mono font-semibold cursor-not-allowed"
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          TRADE_SENT
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSendTrade(proposal.id)
-                            }}
-                            disabled={sendingTrade === proposal.id}
-                            className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
-                          >
-                            {sendingTrade === proposal.id ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-                                SENDING...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="mr-2 h-4 w-4" />
-                                SEND_TRADE
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleModifyTrade(proposal)
-                            }}
-                            variant="outline"
-                            className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            MODIFY
-                          </Button>
-                        </>
-                      )}
-                    </div>
                   </CardContent>
                 </Card>
               ))}
