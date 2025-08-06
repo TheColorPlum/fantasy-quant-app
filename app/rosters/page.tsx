@@ -2,34 +2,180 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Terminal, TrendingUp, TrendingDown, Filter } from "lucide-react"
-import Link from "next/link"
-import { mockLeagueData } from "@/lib/dummy-data"
+import { Users } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { PlayerOverviewModal } from "@/components/player-overview-modal"
 
 export default function RostersPage() {
-  const [selectedTeam, setSelectedTeam] = useState("ALL")
-  const [sortBy, setSortBy] = useState("VALUE")
+  const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [showPlayerModal, setShowPlayerModal] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState("your-team")
 
-  const filteredTeams =
-    selectedTeam === "ALL" ? mockLeagueData.teams : mockLeagueData.teams.filter((team) => team.name === selectedTeam)
+  // Mock league teams data
+  const leagueTeams = [
+    { id: "your-team", name: "Your Team", owner: "You" },
+    { id: "fantasy-legends", name: "Fantasy Legends", owner: "Mike Johnson" },
+    { id: "trade-masters", name: "Trade Masters", owner: "Sarah Chen" },
+    { id: "playoff-bound", name: "Playoff Bound", owner: "Alex Rodriguez" },
+    { id: "defense-dynasty", name: "Defense Dynasty", owner: "Jordan Smith" },
+    { id: "waiver-warriors", name: "Waiver Warriors", owner: "Taylor Brown" },
+    { id: "championship-chasers", name: "Championship Chasers", owner: "Chris Wilson" },
+    { id: "draft-kings", name: "Draft Kings", owner: "Morgan Davis" },
+  ]
 
-  const sortPlayers = (players: any[]) => {
-    return [...players].sort((a, b) => {
-      switch (sortBy) {
-        case "VALUE":
-          return b.value - a.value
-        case "TREND":
-          return b.weeklyTrend - a.weeklyTrend
-        case "POSITION":
-          return a.position.localeCompare(b.position)
-        default:
-          return 0
-      }
-    })
+  // Mock roster data for different teams
+  const teamRosters = {
+    "your-team": [
+      {
+        id: "1",
+        name: "Patrick Mahomes",
+        position: "QB",
+        nflTeam: "KC",
+        fantasyTeam: "Your Team",
+        value: 28.5,
+        weeklyTrend: 2.1,
+        projectedPoints: 24.8,
+        projTrend: 1.3,
+        seasonPoints: 287.4,
+        currentWeekProjection: 24.8,
+        owned: true,
+      },
+      {
+        id: "2",
+        name: "Christian McCaffrey",
+        position: "RB",
+        nflTeam: "SF",
+        fantasyTeam: "Your Team",
+        value: 52.1,
+        weeklyTrend: 0.5,
+        projectedPoints: 22.3,
+        projTrend: -0.8,
+        seasonPoints: 245.3,
+        currentWeekProjection: 22.3,
+        owned: true,
+      },
+      {
+        id: "3",
+        name: "Austin Ekeler",
+        position: "RB",
+        nflTeam: "LAC",
+        fantasyTeam: "Your Team",
+        value: 45.3,
+        weeklyTrend: -1.2,
+        projectedPoints: 18.7,
+        projTrend: 2.1,
+        seasonPoints: 205.7,
+        currentWeekProjection: 18.7,
+        owned: true,
+      },
+      {
+        id: "4",
+        name: "Justin Jefferson",
+        position: "WR",
+        nflTeam: "MIN",
+        fantasyTeam: "Your Team",
+        value: 48.9,
+        weeklyTrend: 0.2,
+        projectedPoints: 19.4,
+        projTrend: 0.5,
+        seasonPoints: 213.4,
+        currentWeekProjection: 19.4,
+        owned: true,
+      },
+      {
+        id: "5",
+        name: "Stefon Diggs",
+        position: "WR",
+        nflTeam: "BUF",
+        fantasyTeam: "Your Team",
+        value: 42.1,
+        weeklyTrend: 0.4,
+        projectedPoints: 17.2,
+        projTrend: -1.1,
+        seasonPoints: 189.2,
+        currentWeekProjection: 17.2,
+        owned: true,
+      },
+      {
+        id: "6",
+        name: "Travis Kelce",
+        position: "TE",
+        nflTeam: "KC",
+        fantasyTeam: "Your Team",
+        value: 32.1,
+        weeklyTrend: 0.1,
+        projectedPoints: 14.6,
+        projTrend: 0.3,
+        seasonPoints: 160.6,
+        currentWeekProjection: 14.6,
+        owned: true,
+      },
+    ],
+    "fantasy-legends": [
+      {
+        id: "7",
+        name: "Josh Allen",
+        position: "QB",
+        nflTeam: "BUF",
+        fantasyTeam: "Fantasy Legends",
+        value: 26.8,
+        weeklyTrend: 1.5,
+        projectedPoints: 23.2,
+        projTrend: 0.8,
+        seasonPoints: 255.2,
+        currentWeekProjection: 23.2,
+        owned: true,
+      },
+      {
+        id: "8",
+        name: "Derrick Henry",
+        position: "RB",
+        nflTeam: "TEN",
+        fantasyTeam: "Fantasy Legends",
+        value: 38.4,
+        weeklyTrend: -0.8,
+        projectedPoints: 16.9,
+        projTrend: -1.2,
+        seasonPoints: 185.9,
+        currentWeekProjection: 16.9,
+        owned: true,
+      },
+      {
+        id: "9",
+        name: "Davante Adams",
+        position: "WR",
+        nflTeam: "LV",
+        fantasyTeam: "Fantasy Legends",
+        value: 41.2,
+        weeklyTrend: 0.6,
+        projectedPoints: 18.1,
+        projTrend: 1.4,
+        seasonPoints: 199.1,
+        currentWeekProjection: 18.1,
+        owned: true,
+      },
+      {
+        id: "10",
+        name: "Mark Andrews",
+        position: "TE",
+        nflTeam: "BAL",
+        fantasyTeam: "Fantasy Legends",
+        value: 28.7,
+        weeklyTrend: -0.4,
+        projectedPoints: 13.2,
+        projTrend: -0.6,
+        seasonPoints: 145.2,
+        currentWeekProjection: 13.2,
+        owned: true,
+      },
+    ],
   }
+
+  const currentRoster = teamRosters[selectedTeam] || []
+  const selectedTeamInfo = leagueTeams.find(team => team.id === selectedTeam)
 
   const getPositionColor = (position: string) => {
     switch (position) {
@@ -46,169 +192,144 @@ export default function RostersPage() {
       case "DST":
         return "text-[#8b5cf6] border-[#8b5cf6]"
       default:
-        return "text-[#94a3b8] border-[#94a3b8]"
+        return "text-[#cbd5e1] border-[#cbd5e1]"
     }
+  }
+
+  const handlePlayerClick = (player) => {
+    setSelectedPlayer(player)
+    setShowPlayerModal(true)
   }
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header */}
-      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="flex items-center space-x-2">
-                <Terminal className="h-6 w-6 text-[#22c55e]" />
-                <span className="text-xl font-bold font-mono">FANTASYQUANT</span>
-              </Link>
-              <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
-                MARKET_ANALYSIS
-              </Badge>
-            </div>
-
-            <div className="flex items-center space-x-6">
-              <div className="font-mono text-sm text-[#94a3b8]">
-                PROPOSALS_REMAINING: <span className="text-[#f59e0b] font-semibold">3/5</span>
-              </div>
-              <Link href="/trade-generator">
-                <Button className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold">
-                  GENERATE_TRADES
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-8">
-        {/* Controls */}
-        <Card className="mb-6 bg-[#1a1a1a] border-[#2a2a2a]">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2">
-                  <Filter className="h-5 w-5 text-[#22c55e]" />
-                  <span className="font-mono text-sm text-[#cbd5e1]">FILTER_PORTFOLIO:</span>
-                  <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                    <SelectTrigger className="w-48 bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                      <SelectItem value="ALL" className="font-mono">
-                        ALL_PORTFOLIOS
-                      </SelectItem>
-                      {mockLeagueData.teams.map((team) => (
-                        <SelectItem key={team.name} value={team.name} className="font-mono">
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <div className="max-w-6xl mx-auto">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="font-mono text-3xl font-bold text-[#22c55e] mb-2">LEAGUE_ROSTERS</h1>
+            <p className="font-mono text-sm text-[#94a3b8]">VIEW_ALL_TEAM_ROSTERS</p>
+          </div>
 
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono text-sm text-[#cbd5e1]">SORT_BY:</span>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-32 bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                      <SelectItem value="VALUE" className="font-mono">
-                        VALUE
-                      </SelectItem>
-                      <SelectItem value="TREND" className="font-mono">
-                        TREND
-                      </SelectItem>
-                      <SelectItem value="POSITION" className="font-mono">
-                        POSITION
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="font-mono text-sm text-[#94a3b8]">
-                SHOWING: <span className="text-[#22c55e]">{filteredTeams.length}</span> PORTFOLIOS
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Team Rosters */}
-        <div className="space-y-8">
-          {filteredTeams.map((team) => (
-            <Card key={team.name} className="bg-[#1a1a1a] border-[#2a2a2a]">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <CardTitle className="font-mono text-xl text-[#22c55e]">{team.name}</CardTitle>
-                    <Badge variant="outline" className="text-[#cbd5e1] border-[#cbd5e1] font-mono text-xs">
-                      RANK_{team.rank}/12
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center space-x-6 font-mono text-sm">
-                    <div className="text-[#94a3b8]">
-                      PORTFOLIO_VALUE: <span className="text-[#22c55e]">${team.totalValue}</span>
-                    </div>
-                    <div className="text-[#94a3b8]">
-                      RECORD: <span className="text-[#cbd5e1]">{team.record}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div className="grid gap-3">
-                  {sortPlayers(team.roster).map((player, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-3 hover:bg-[#1a1a1a] transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
-                          {player.position}
-                        </Badge>
-                        <div>
-                          <div className="font-mono text-sm text-[#cbd5e1]">{player.name}</div>
-                          <div className="font-mono text-xs text-[#94a3b8]">{player.team}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-6">
-                        <div className="text-right">
-                          <div className="font-mono text-sm text-[#22c55e]">${player.value}</div>
-                          <div className="font-mono text-xs text-[#94a3b8]">MARKET_VALUE</div>
-                        </div>
-
-                        <div className="text-right">
-                          <div
-                            className={`font-mono text-sm flex items-center ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
-                          >
-                            {player.weeklyTrend >= 0 ? (
-                              <TrendingUp className="h-4 w-4 mr-1" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4 mr-1" />
-                            )}
-                            {player.weeklyTrend > 0 ? "+" : ""}
-                            {player.weeklyTrend}%
-                          </div>
-                          <div className="font-mono text-xs text-[#94a3b8]">WEEKLY_TREND</div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="font-mono text-sm text-[#cbd5e1]">{player.projectedPoints}</div>
-                          <div className="font-mono text-xs text-[#94a3b8]">PROJ_PTS</div>
-                        </div>
-                      </div>
-                    </div>
+          {/* Team Selector */}
+          <Card className="bg-[#1a1a1a] border-[#2a2a2a] mb-8">
+            <CardHeader>
+              <CardTitle className="font-mono text-[#22c55e]">SELECT_TEAM</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-[#cbd5e1] max-w-md">
+                  <SelectValue placeholder="SELECT_TEAM" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                  {leagueTeams.map((team) => (
+                    <SelectItem key={team.id} value={team.id} className="font-mono text-[#cbd5e1]">
+                      {team.name} ({team.owner})
+                    </SelectItem>
                   ))}
-                </div>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {/* Selected Team Roster */}
+          {selectedTeamInfo && (
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <CardHeader>
+                <CardTitle className="font-mono text-[#22c55e]">{selectedTeamInfo.name.toUpperCase()}</CardTitle>
+                <CardDescription className="font-mono text-xs text-[#cbd5e1]">
+                  Owner: {selectedTeamInfo.owner}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {currentRoster.length > 0 ? (
+                  <div className="bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-[#2a2a2a] hover:bg-transparent">
+                          <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                            POSITION
+                          </TableHead>
+                          <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                            PLAYER
+                          </TableHead>
+                          <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                            VALUE
+                          </TableHead>
+                          <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                            PROJ_PTS
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentRoster.map((player, index) => (
+                          <TableRow key={index} className="border-[#2a2a2a] hover:bg-[#1a1a1a]">
+                            <TableCell className="py-3 text-left">
+                              <Badge
+                                variant="outline"
+                                className={`font-mono text-xs ${getPositionColor(player.position)}`}
+                              >
+                                {player.position}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-3 text-left">
+                              <div>
+                                <div 
+                                  className="font-mono text-sm text-[#cbd5e1] font-medium cursor-pointer hover:text-[#22c55e]"
+                                  onClick={() => handlePlayerClick(player)}
+                                >
+                                  {player.name}
+                                </div>
+                                <div className="font-mono text-xs text-[#94a3b8]">{player.nflTeam}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 text-center">
+                              <div className="font-mono text-sm text-[#22c55e] font-semibold">
+                                ${player.value}{" "}
+                                <span
+                                  className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                                >
+                                  ({player.weeklyTrend > 0 ? "+" : ""}
+                                  {player.weeklyTrend}%)
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 text-center">
+                              <div className="font-mono text-sm text-[#cbd5e1] font-medium">
+                                {player.projectedPoints}{" "}
+                                <span
+                                  className={`text-xs ${player.projTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                                >
+                                  ({player.projTrend > 0 ? "+" : ""}
+                                  {player.projTrend}%)
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-16 w-16 text-[#2a2a2a] mx-auto mb-4" />
+                    <p className="font-mono text-sm text-[#94a3b8]">
+                      No roster data available for this team
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+          )}
         </div>
       </div>
+      
+      {/* Player Overview Modal */}
+      <PlayerOverviewModal 
+        player={selectedPlayer} 
+        open={showPlayerModal} 
+        onOpenChange={setShowPlayerModal} 
+      />
     </div>
   )
 }

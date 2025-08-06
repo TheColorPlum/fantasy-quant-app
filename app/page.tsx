@@ -1,22 +1,52 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Terminal, Users, Zap } from "lucide-react"
+import { TrendingUp, Terminal, Users, Zap, CheckCircle } from 'lucide-react'
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const router = useRouter()
 
-  const handleAccessTerminal = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setIsLoading(true)
-    // Simulate authentication
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        router.push("/dashboard")
+      } else {
+        // Handle login error
+        console.error("Login failed:", data.error)
+      }
+    } catch (error) {
+      console.error("Login error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDemoLogin = async () => {
+    setIsLoading(true)
+    // Simulate authentication with demo credentials
     await new Promise((resolve) => setTimeout(resolve, 1500))
     router.push("/dashboard")
   }
@@ -34,8 +64,19 @@ export default function LandingPage() {
                 v2.1.4
               </Badge>
             </div>
-            <div className="font-mono text-sm text-[#94a3b8]">
-              MARKET_STATUS: <span className="text-[#22c55e]">ACTIVE</span>
+            <div className="flex items-center space-x-4">
+              <Link href="/login" className="font-mono text-sm text-[#cbd5e1] hover:text-[#22c55e] transition-colors">
+                LOGIN
+              </Link>
+              <Link
+                href="/signup"
+                className="font-mono text-sm bg-[#22c55e] text-black px-3 py-1 rounded hover:bg-[#16a34a] transition-colors"
+              >
+                REGISTER
+              </Link>
+              <div className="font-mono text-sm text-[#94a3b8]">
+                MARKET_STATUS: <span className="text-[#22c55e]">ACTIVE</span>
+              </div>
             </div>
           </div>
         </div>
@@ -57,97 +98,137 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Terminal Access */}
+          {/* Quick Access Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link href="/signup">
+              <Button className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-bold text-lg px-8 py-4">
+                START_TRADING
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+              className="border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-black font-mono font-bold text-lg px-8 py-4 bg-transparent"
+            >
+              {isLoading ? "CONNECTING..." : "DEMO_ACCESS"}
+            </Button>
+          </div>
+
+          {/* Quick Login for Existing Users */}
           <Card className="max-w-md mx-auto bg-[#1a1a1a] border-[#2a2a2a] terminal-glow">
             <CardHeader className="text-center">
-              <CardTitle className="font-mono text-[#22c55e]">ACCESS_TERMINAL</CardTitle>
-              <CardDescription className="text-[#94a3b8] font-mono text-sm">START_TRADING_SESSION</CardDescription>
+              <CardTitle className="font-mono text-[#22c55e]">QUICK_LOGIN</CardTitle>
+              <CardDescription className="text-[#94a3b8] font-mono text-sm">EXISTING_USERS</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-[#2a2a2a]">
-                  <TabsTrigger value="login" className="font-mono text-xs text-[#cbd5e1]">
-                    LOGIN
-                  </TabsTrigger>
-                  <TabsTrigger value="register" className="font-mono text-xs text-[#cbd5e1]">
-                    REGISTER
-                  </TabsTrigger>
-                </TabsList>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="font-mono text-xs text-[#cbd5e1]">
+                    EMAIL
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="trader@tradeup.com"
+                    className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="font-mono text-xs text-[#cbd5e1]">
+                    PASSWORD
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                >
+                  {isLoading ? "CONNECTING..." : "ACCESS_TERMINAL"}
+                </Button>
+              </form>
 
-                <TabsContent value="login" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="font-mono text-xs text-[#cbd5e1]">
-                      EMAIL
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="trader@tradeup.com"
-                      className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="font-mono text-xs text-[#cbd5e1]">
-                      PASSWORD
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleAccessTerminal}
-                    disabled={isLoading}
-                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
-                  >
-                    {isLoading ? "CONNECTING..." : "START_TRADING"}
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="register" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-email" className="font-mono text-xs text-[#cbd5e1]">
-                      EMAIL
-                    </Label>
-                    <Input
-                      id="reg-email"
-                      type="email"
-                      placeholder="trader@tradeup.com"
-                      className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-password" className="font-mono text-xs text-[#cbd5e1]">
-                      PASSWORD
-                    </Label>
-                    <Input
-                      id="reg-password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-sm text-[#cbd5e1]"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleAccessTerminal}
-                    disabled={isLoading}
-                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
-                  >
-                    {isLoading ? "CREATING..." : "CREATE_ACCOUNT"}
-                  </Button>
-                </TabsContent>
-              </Tabs>
+              <div className="mt-4 text-center">
+                <p className="text-[#94a3b8] text-sm font-mono">
+                  NEW_USER?{" "}
+                  <Link href="/signup" className="text-[#22c55e] hover:text-[#16a34a]">
+                    CREATE_ACCOUNT
+                  </Link>
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* Features */}
+      {/* Combined How It Works & Features */}
       <section className="container mx-auto px-4 py-16 border-t border-[#2a2a2a]">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 font-mono text-[#22c55e]">CORE_CAPABILITIES</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 font-mono text-[#22c55e]">HOW_IT_WORKS</h2>
 
+          {/* Process Steps */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-8 h-8 bg-[#22c55e] text-black rounded-full flex items-center justify-center font-mono font-bold text-sm">
+                    1
+                  </div>
+                  <CardTitle className="font-mono text-lg text-[#cbd5e1]">CONNECT_LEAGUE</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-[#cbd5e1] text-sm">
+                  Link your ESPN fantasy league and select your team. We'll analyze all rosters and recent activity to understand your league's dynamics.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-8 h-8 bg-[#22c55e] text-black rounded-full flex items-center justify-center font-mono font-bold text-sm">
+                    2
+                  </div>
+                  <CardTitle className="font-mono text-lg text-[#cbd5e1]">FIND_TRADES</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-[#cbd5e1] text-sm">
+                  Select a position you want to upgrade. Our AI scans all teams to find mutually beneficial trades based on team needs and player values.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-8 h-8 bg-[#22c55e] text-black rounded-full flex items-center justify-center font-mono font-bold text-sm">
+                    3
+                  </div>
+                  <CardTitle className="font-mono text-lg text-[#cbd5e1]">SEND_PROPOSALS</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-[#cbd5e1] text-sm">
+                  Get personalized trade messages that explain why the trade works. Copy and send to league mates with context that gets results.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Core Capabilities */}
+          <h3 className="text-2xl font-bold text-center mb-8 font-mono text-[#22c55e]">CORE_CAPABILITIES</h3>
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
               <CardHeader>

@@ -4,24 +4,25 @@ import { createSession } from "@/lib/auth"
 import { cookies } from "next/headers"
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 })
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log("Login attempt with body:", body)
+    console.log("Login attempt for:", body.email)
 
     const { email, password } = loginSchema.parse(body)
-    console.log("Parsed credentials:", { email, password: "***" })
 
     const user = await createSession(email, password)
-    console.log("Session creation result:", user ? "success" : "failed")
 
     if (!user) {
+      console.log("Login failed for:", email)
       return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 })
     }
+
+    console.log("Login successful for:", email)
 
     // Set session cookie
     const cookieStore = cookies()
@@ -32,8 +33,6 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     })
-
-    console.log("Session cookie set for user:", user.id)
 
     return NextResponse.json({
       success: true,
