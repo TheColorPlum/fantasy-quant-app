@@ -13,32 +13,146 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { DonateModal } from "@/components/donate-modal"
 import { RosterTicker } from "@/components/roster-ticker"
+import { PlayerOverviewModal } from "@/components/player-overview-modal"
 
 interface Player {
   id: string
   name: string
   position: string
-  team: string
+  nflTeam: string
+  fantasyTeam: string
   value: number
-  trend: number
+  weeklyTrend: number
   projectedPoints: number
-  status: 'healthy' | 'questionable' | 'doubtful' | 'out'
+  seasonPoints: number
+  currentWeekProjection: number
+  owned: boolean
 }
 
 const mockRoster: Player[] = [
-  { id: '1', name: 'Josh Allen', position: 'QB', team: 'BUF', value: 85, trend: 5.2, projectedPoints: 24.8, status: 'healthy' },
-  { id: '2', name: 'Christian McCaffrey', position: 'RB', team: 'SF', value: 92, trend: -2.1, projectedPoints: 22.4, status: 'questionable' },
-  { id: '3', name: 'Alvin Kamara', position: 'RB', team: 'NO', value: 78, trend: 3.8, projectedPoints: 18.6, status: 'healthy' },
-  { id: '4', name: 'Tyreek Hill', position: 'WR', team: 'MIA', value: 88, trend: 1.4, projectedPoints: 19.2, status: 'healthy' },
-  { id: '5', name: 'Stefon Diggs', position: 'WR', team: 'HOU', value: 82, trend: -1.8, projectedPoints: 17.8, status: 'healthy' },
-  { id: '6', name: 'Mike Evans', position: 'WR', team: 'TB', value: 75, trend: 2.3, projectedPoints: 16.4, status: 'doubtful' },
-  { id: '7', name: 'Travis Kelce', position: 'TE', team: 'KC', value: 84, trend: -3.2, projectedPoints: 15.6, status: 'healthy' },
-  { id: '8', name: 'Justin Tucker', position: 'K', team: 'BAL', value: 45, trend: 0.8, projectedPoints: 8.2, status: 'healthy' },
-  { id: '9', name: 'San Francisco', position: 'DST', team: 'SF', value: 38, trend: 4.1, projectedPoints: 9.4, status: 'healthy' },
+  { 
+    id: '1', 
+    name: 'Josh Allen', 
+    position: 'QB', 
+    nflTeam: 'BUF', 
+    fantasyTeam: 'My Team',
+    value: 85, 
+    weeklyTrend: 5.2, 
+    projectedPoints: 24.8, 
+    seasonPoints: 298,
+    currentWeekProjection: 24.8,
+    owned: true
+  },
+  { 
+    id: '2', 
+    name: 'Christian McCaffrey', 
+    position: 'RB', 
+    nflTeam: 'SF', 
+    fantasyTeam: 'My Team',
+    value: 92, 
+    weeklyTrend: -2.1, 
+    projectedPoints: 22.4, 
+    seasonPoints: 268,
+    currentWeekProjection: 22.4,
+    owned: true
+  },
+  { 
+    id: '3', 
+    name: 'Alvin Kamara', 
+    position: 'RB', 
+    nflTeam: 'NO', 
+    fantasyTeam: 'My Team',
+    value: 78, 
+    weeklyTrend: 3.8, 
+    projectedPoints: 18.6, 
+    seasonPoints: 223,
+    currentWeekProjection: 18.6,
+    owned: true
+  },
+  { 
+    id: '4', 
+    name: 'Tyreek Hill', 
+    position: 'WR', 
+    nflTeam: 'MIA', 
+    fantasyTeam: 'My Team',
+    value: 88, 
+    weeklyTrend: 1.4, 
+    projectedPoints: 19.2, 
+    seasonPoints: 230,
+    currentWeekProjection: 19.2,
+    owned: true
+  },
+  { 
+    id: '5', 
+    name: 'Stefon Diggs', 
+    position: 'WR', 
+    nflTeam: 'HOU', 
+    fantasyTeam: 'My Team',
+    value: 82, 
+    weeklyTrend: -1.8, 
+    projectedPoints: 17.8, 
+    seasonPoints: 213,
+    currentWeekProjection: 17.8,
+    owned: true
+  },
+  { 
+    id: '6', 
+    name: 'Mike Evans', 
+    position: 'WR', 
+    nflTeam: 'TB', 
+    fantasyTeam: 'My Team',
+    value: 75, 
+    weeklyTrend: 2.3, 
+    projectedPoints: 16.4, 
+    seasonPoints: 197,
+    currentWeekProjection: 16.4,
+    owned: true
+  },
+  { 
+    id: '7', 
+    name: 'Travis Kelce', 
+    position: 'TE', 
+    nflTeam: 'KC', 
+    fantasyTeam: 'My Team',
+    value: 84, 
+    weeklyTrend: -3.2, 
+    projectedPoints: 15.6, 
+    seasonPoints: 187,
+    currentWeekProjection: 15.6,
+    owned: true
+  },
+  { 
+    id: '8', 
+    name: 'Justin Tucker', 
+    position: 'K', 
+    nflTeam: 'BAL', 
+    fantasyTeam: 'My Team',
+    value: 45, 
+    weeklyTrend: 0.8, 
+    projectedPoints: 8.2, 
+    seasonPoints: 98,
+    currentWeekProjection: 8.2,
+    owned: true
+  },
+  { 
+    id: '9', 
+    name: 'San Francisco', 
+    position: 'DST', 
+    nflTeam: 'SF', 
+    fantasyTeam: 'My Team',
+    value: 38, 
+    weeklyTrend: 4.1, 
+    projectedPoints: 9.4, 
+    seasonPoints: 113,
+    currentWeekProjection: 9.4,
+    owned: true
+  },
 ]
 
 export default function DashboardPage() {
   const [showDonateModal, setShowDonateModal] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [showPlayerModal, setShowPlayerModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -51,6 +165,11 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Logout error:", error)
     }
+  }
+
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player)
+    setShowPlayerModal(true)
   }
 
   const getPositionColor = (position: string) => {
@@ -207,7 +326,11 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {mockRoster.map((player, index) => (
-                    <TableRow key={index} className="border-[#2a2a2a] hover:bg-[#1a1a1a]">
+                    <TableRow 
+                      key={index} 
+                      className="border-[#2a2a2a] hover:bg-[#1a1a1a] cursor-pointer"
+                      onClick={() => handlePlayerClick(player)}
+                    >
                       <TableCell className="py-3 text-left">
                         <Badge
                           variant="outline"
@@ -218,20 +341,20 @@ export default function DashboardPage() {
                       </TableCell>
                       <TableCell className="py-3 text-left">
                         <div>
-                          <div className="font-mono text-sm text-[#cbd5e1] font-medium">
+                          <div className="font-mono text-sm text-[#cbd5e1] font-medium hover:text-[#22c55e] transition-colors">
                             {player.name}
                           </div>
-                          <div className="font-mono text-xs text-[#94a3b8]">{player.team}</div>
+                          <div className="font-mono text-xs text-[#94a3b8]">{player.nflTeam}</div>
                         </div>
                       </TableCell>
                       <TableCell className="py-3 text-center">
                         <div className="font-mono text-sm text-[#22c55e] font-semibold">
                           ${player.value}{" "}
                           <span
-                            className={`text-xs ${player.trend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
                           >
-                            ({player.trend > 0 ? "+" : ""}
-                            {player.trend}%)
+                            ({player.weeklyTrend > 0 ? "+" : ""}
+                            {player.weeklyTrend}%)
                           </span>
                         </div>
                       </TableCell>
@@ -250,6 +373,11 @@ export default function DashboardPage() {
       </div>
 
       <DonateModal open={showDonateModal} onOpenChange={setShowDonateModal} />
+      <PlayerOverviewModal 
+        player={selectedPlayer} 
+        open={showPlayerModal} 
+        onOpenChange={setShowPlayerModal} 
+      />
     </div>
   )
 }
