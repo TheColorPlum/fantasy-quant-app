@@ -24,7 +24,7 @@ export function QuickActions() {
                   <ChevronRight className="h-5 w-5 text-[#22c55e]" />
                 </CardTitle>
                 <CardDescription className="text-[#94a3b8] font-mono text-sm">
-                  Scan all teams for winning opportunities
+                  Scan for trade opportunities
                 </CardDescription>
               </CardHeader>
             </Card>
