@@ -305,6 +305,26 @@ export default function DashboardPage() {
               Current roster analysis and projected points
             </CardDescription>
           </CardHeader>
+          <div className="px-6 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">TOTAL_VALUE</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">
+                  ${mockRoster.reduce((sum, player) => sum + player.value, 0)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">PROJ_POINTS</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">
+                  {mockRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">RECORD</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">8-4-0</div>
+              </div>
+            </div>
+          </div>
           <CardContent>
             <div className="bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
               <Table>
