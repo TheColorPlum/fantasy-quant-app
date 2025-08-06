@@ -25,12 +25,6 @@ interface Player {
   status: 'healthy' | 'questionable' | 'doubtful' | 'out'
 }
 
-interface DashboardStats {
-  totalTrades: number
-  acceptedTrades: number
-  isPremium: boolean
-}
-
 const mockRoster: Player[] = [
   { id: '1', name: 'Josh Allen', position: 'QB', team: 'BUF', value: 85, trend: 5.2, projectedPoints: 24.8, status: 'healthy' },
   { id: '2', name: 'Christian McCaffrey', position: 'RB', team: 'SF', value: 92, trend: -2.1, projectedPoints: 22.4, status: 'questionable' },
@@ -44,26 +38,10 @@ const mockRoster: Player[] = [
 ]
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalTrades: 0,
-    acceptedTrades: 0,
-    isPremium: false
-  })
   const [showDonateModal, setShowDonateModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    // Simulate loading dashboard stats
-    const loadStats = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setStats({
-        totalTrades: 12,
-        acceptedTrades: 4,
-        isPremium: false
-      })
-    }
-    loadStats()
   }, [])
 
   const handleLogout = async () => {
@@ -144,52 +122,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#cbd5e1] font-mono">TOTAL_TRADES</CardTitle>
-              <TrendingUp className="h-4 w-4 text-[#22c55e]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#22c55e] font-mono">{stats.totalTrades}</div>
-              <p className="text-xs text-[#94a3b8] font-mono">+2 from last week</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#cbd5e1] font-mono">ACCEPTED</CardTitle>
-              <Target className="h-4 w-4 text-[#22c55e]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#22c55e] font-mono">{stats.acceptedTrades}</div>
-              <p className="text-xs text-[#94a3b8] font-mono">33% acceptance rate</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#cbd5e1] font-mono">STATUS</CardTitle>
-              <Users className="h-4 w-4 text-[#22c55e]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#22c55e] font-mono">
-                {stats.isPremium ? "PRO" : "FREE"}
-              </div>
-              {!stats.isPremium && (
-                <Link href="/upgrade">
-                  <Button variant="link" className="text-xs text-[#22c55e] p-0 h-auto font-mono">
-                    UPGRADE →
-                  </Button>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Link href="/trades">
             <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#22c55e] transition-colors cursor-pointer">
               <CardHeader>
@@ -227,6 +161,20 @@ export default function DashboardPage() {
                 </CardTitle>
                 <CardDescription className="text-[#94a3b8] font-mono text-sm">
                   Analyze all league rosters and values
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/players">
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#22c55e] transition-colors cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-[#cbd5e1] font-mono">
+                  ALL_PLAYERS
+                  <ChevronRight className="h-5 w-5 text-[#22c55e]" />
+                </CardTitle>
+                <CardDescription className="text-[#94a3b8] font-mono text-sm">
+                  Browse and analyze all league players
                 </CardDescription>
               </CardHeader>
             </Card>
