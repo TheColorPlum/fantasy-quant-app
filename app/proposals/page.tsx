@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check } from 'lucide-react'
+import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check, MessageSquare, Clock, AlertTriangle } from 'lucide-react'
 
 interface TradeProposal {
   id: string
@@ -46,7 +46,6 @@ interface TradeProposal {
 export default function ProposalsPage() {
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null)
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
-  const [selectedProposal, setSelectedProposal] = useState<TradeProposal | null>(null)
   const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
   const [modifyingProposal, setModifyingProposal] = useState<TradeProposal | null>(null)
   const [customMessage, setCustomMessage] = useState("")
@@ -185,12 +184,6 @@ export default function ProposalsPage() {
     },
   ]
 
-  const copyMessage = (message: string, proposalId: string) => {
-    navigator.clipboard.writeText(message)
-    setCopiedMessage(proposalId)
-    setTimeout(() => setCopiedMessage(null), 2000)
-  }
-
   const calculateTotalValue = (players: Array<{ value: number }>) => {
     return players.reduce((sum, player) => sum + player.value, 0)
   }
@@ -258,60 +251,16 @@ export default function ProposalsPage() {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-sm text-[#94a3b8]">TOTAL_VALUE_GAIN</p>
-                    <p className="font-mono text-2xl font-bold text-[#22c55e]">
-                      +{proposals.reduce((sum, p) => sum + p.valueDifferential, 0).toFixed(1)}
-                    </p>
-                  </div>
-                  <BarChart3 className="h-8 w-8 text-[#22c55e]" />
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-sm text-[#94a3b8]">AVG_VALUE_DELTA</p>
-                    <p className="font-mono text-2xl font-bold text-[#22c55e]">
-                      +{(proposals.reduce((sum, p) => sum + p.valueDifferential, 0) / proposals.length).toFixed(1)}
-                    </p>
-                  </div>
-                  <Target className="h-8 w-8 text-[#22c55e]" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-sm text-[#94a3b8]">POSITIVE_TRADES</p>
-                    <p className="font-mono text-2xl font-bold text-[#22c55e]">
-                      {proposals.filter((p) => p.valueDifferential > 0).length}/{proposals.length}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-[#22c55e]" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Trade Proposals List */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6">
               {proposals.map((proposal) => (
                 <Card
                   key={proposal.id}
                   className={`bg-[#1a1a1a] border-[#2a2a2a] terminal-glow cursor-pointer transition-all ${
-                    selectedProposal?.id === proposal.id ? "border-[#22c55e] shadow-[0_0_20px_rgba(34,197,94,0.3)]" : ""
-                  } ${sentTrades.has(proposal.id) ? "opacity-60" : ""}`}
-                  onClick={() => setSelectedProposal(proposal)}
+                    sentTrades.has(proposal.id) ? "opacity-60" : ""
+                  }`}
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -457,7 +406,9 @@ export default function ProposalsPage() {
                             <Button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                copyMessage(proposal.message, proposal.id)
+                                navigator.clipboard.writeText(proposal.message)
+                                setCopiedMessage(proposal.id)
+                                setTimeout(() => setCopiedMessage(null), 2000)
                               }}
                               size="sm"
                               variant="ghost"
@@ -471,6 +422,55 @@ export default function ProposalsPage() {
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
+
+                    {/* Trade Intelligence - incorporated directly */}
+                    <div className="space-y-4">
+                      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <MessageSquare className="h-4 w-4 text-[#22c55e]" />
+                          <p className="font-mono text-xs text-[#94a3b8]">WHY_IT_WORKS:</p>
+                        </div>
+                        <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
+                          {proposal.context.whyItWorks}
+                        </p>
+                      </div>
+
+                      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Clock className="h-4 w-4 text-[#f59e0b]" />
+                          <p className="font-mono text-xs text-[#94a3b8]">TIMING_ADVICE:</p>
+                        </div>
+                        <p className="font-mono text-sm text-[#22c55e] mb-2">
+                          {proposal.context.timingAdvice.bestTiming}
+                        </p>
+                        <p className="font-mono text-xs text-[#cbd5e1] mb-3">
+                          {proposal.context.timingAdvice.reasoning}
+                        </p>
+
+                        {proposal.context.timingAdvice.riskFactors.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <AlertTriangle className="h-3 w-3 text-[#ef4444]" />
+                              <p className="font-mono text-xs text-[#ef4444]">RISK_FACTORS:</p>
+                            </div>
+                            {proposal.context.timingAdvice.riskFactors.map((risk, index) => (
+                              <p key={index} className="font-mono text-xs text-[#94a3b8] ml-5">
+                                • {risk}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {proposal.context.negotiationBackup && (
+                        <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                          <p className="font-mono text-xs text-[#94a3b8] mb-2">NEGOTIATION_BACKUP:</p>
+                          <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
+                            {proposal.context.negotiationBackup}
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-4">
@@ -521,56 +521,6 @@ export default function ProposalsPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-
-            {/* Trade Intelligence Panel */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-8">
-                <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-                  <CardHeader>
-                    <CardTitle className="font-mono text-[#22c55e]">TRADE_INTELLIGENCE</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedProposal ? (
-                      <div className="space-y-4">
-                        <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                          <p className="font-mono text-xs text-[#94a3b8] mb-2">WHY_IT_WORKS:</p>
-                          <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
-                            {selectedProposal.context.whyItWorks}
-                          </p>
-                        </div>
-
-                        <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                          <p className="font-mono text-xs text-[#94a3b8] mb-2">TIMING_ADVICE:</p>
-                          <p className="font-mono text-sm text-[#22c55e] mb-2">
-                            {selectedProposal.context.timingAdvice.bestTiming}
-                          </p>
-                          <p className="font-mono text-xs text-[#cbd5e1]">
-                            {selectedProposal.context.timingAdvice.reasoning}
-                          </p>
-                        </div>
-
-                        {selectedProposal.context.negotiationBackup && (
-                          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                            <p className="font-mono text-xs text-[#94a3b8] mb-2">NEGOTIATION_BACKUP:</p>
-                            <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
-                              {selectedProposal.context.negotiationBackup}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="font-mono text-sm text-[#94a3b8]">
-                          SELECT_A_PROPOSAL
-                          <br />
-                          TO_VIEW_DETAILS
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
             </div>
           </div>
         </div>
