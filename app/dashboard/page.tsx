@@ -1,21 +1,163 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { TrendingUp, Users, Target, BarChart3, Clock, Zap, ArrowRight, Trophy, Calendar, Terminal, Heart, LogOut } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TrendingUp, Users, Target, Zap, Terminal, Heart, LogOut, ChevronRight, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { RosterTicker } from "@/components/roster-ticker"
 import { DonateModal } from "@/components/donate-modal"
+import { RosterTicker } from "@/components/roster-ticker"
+import { PlayerOverviewModal } from "@/components/player-overview-modal"
+import { QuickActions } from "@/components/quick-actions"
 
-export default function Dashboard() {
-  const [currentWeek] = useState(14)
-  const [playoffWeeks] = useState([15, 16, 17])
+interface Player {
+  id: string
+  name: string
+  position: string
+  nflTeam: string
+  fantasyTeam: string
+  value: number
+  weeklyTrend: number
+  projectedPoints: number
+  seasonPoints: number
+  currentWeekProjection: number
+  owned: boolean
+}
+
+const mockRoster: Player[] = [
+  { 
+    id: '1', 
+    name: 'Josh Allen', 
+    position: 'QB', 
+    nflTeam: 'BUF', 
+    fantasyTeam: 'My Team',
+    value: 85, 
+    weeklyTrend: 5.2, 
+    projectedPoints: 24.8, 
+    seasonPoints: 298,
+    currentWeekProjection: 24.8,
+    owned: true
+  },
+  { 
+    id: '2', 
+    name: 'Christian McCaffrey', 
+    position: 'RB', 
+    nflTeam: 'SF', 
+    fantasyTeam: 'My Team',
+    value: 92, 
+    weeklyTrend: -2.1, 
+    projectedPoints: 22.4, 
+    seasonPoints: 268,
+    currentWeekProjection: 22.4,
+    owned: true
+  },
+  { 
+    id: '3', 
+    name: 'Alvin Kamara', 
+    position: 'RB', 
+    nflTeam: 'NO', 
+    fantasyTeam: 'My Team',
+    value: 78, 
+    weeklyTrend: 3.8, 
+    projectedPoints: 18.6, 
+    seasonPoints: 223,
+    currentWeekProjection: 18.6,
+    owned: true
+  },
+  { 
+    id: '4', 
+    name: 'Tyreek Hill', 
+    position: 'WR', 
+    nflTeam: 'MIA', 
+    fantasyTeam: 'My Team',
+    value: 88, 
+    weeklyTrend: 1.4, 
+    projectedPoints: 19.2, 
+    seasonPoints: 230,
+    currentWeekProjection: 19.2,
+    owned: true
+  },
+  { 
+    id: '5', 
+    name: 'Stefon Diggs', 
+    position: 'WR', 
+    nflTeam: 'HOU', 
+    fantasyTeam: 'My Team',
+    value: 82, 
+    weeklyTrend: -1.8, 
+    projectedPoints: 17.8, 
+    seasonPoints: 213,
+    currentWeekProjection: 17.8,
+    owned: true
+  },
+  { 
+    id: '6', 
+    name: 'Mike Evans', 
+    position: 'WR', 
+    nflTeam: 'TB', 
+    fantasyTeam: 'My Team',
+    value: 75, 
+    weeklyTrend: 2.3, 
+    projectedPoints: 16.4, 
+    seasonPoints: 197,
+    currentWeekProjection: 16.4,
+    owned: true
+  },
+  { 
+    id: '7', 
+    name: 'Travis Kelce', 
+    position: 'TE', 
+    nflTeam: 'KC', 
+    fantasyTeam: 'My Team',
+    value: 84, 
+    weeklyTrend: -3.2, 
+    projectedPoints: 15.6, 
+    seasonPoints: 187,
+    currentWeekProjection: 15.6,
+    owned: true
+  },
+  { 
+    id: '8', 
+    name: 'Justin Tucker', 
+    position: 'K', 
+    nflTeam: 'BAL', 
+    fantasyTeam: 'My Team',
+    value: 45, 
+    weeklyTrend: 0.8, 
+    projectedPoints: 8.2, 
+    seasonPoints: 98,
+    currentWeekProjection: 8.2,
+    owned: true
+  },
+  { 
+    id: '9', 
+    name: 'San Francisco', 
+    position: 'DST', 
+    nflTeam: 'SF', 
+    fantasyTeam: 'My Team',
+    value: 38, 
+    weeklyTrend: 4.1, 
+    projectedPoints: 9.4, 
+    seasonPoints: 113,
+    currentWeekProjection: 9.4,
+    owned: true
+  },
+]
+
+export default function DashboardPage() {
   const [showDonateModal, setShowDonateModal] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [showPlayerModal, setShowPlayerModal] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -26,67 +168,9 @@ export default function Dashboard() {
     }
   }
 
-  const quickActions = [
-    {
-      title: "FIND_A_TRADE",
-      description: "Generate optimal trade opportunities",
-      icon: Target,
-      href: "/trades",
-      color: "text-[#22c55e]",
-      bgColor: "bg-[#22c55e]/10",
-      borderColor: "border-[#22c55e]/20"
-    },
-    {
-      title: "MY_PROPOSALS", 
-      description: "View sent trade proposals",
-      icon: BarChart3,
-      href: "/proposals",
-      color: "text-[#3b82f6]",
-      bgColor: "bg-[#3b82f6]/10", 
-      borderColor: "border-[#3b82f6]/20"
-    },
-    {
-      title: "VIEW_ROSTERS",
-      description: "Browse all league rosters",
-      icon: Users,
-      href: "/rosters",
-      color: "text-[#f59e0b]",
-      bgColor: "bg-[#f59e0b]/10",
-      borderColor: "border-[#f59e0b]/20"
-    },
-    {
-      title: "ALL_PLAYERS",
-      description: "Search player database",
-      icon: Trophy,
-      href: "/players", 
-      color: "text-[#8b5cf6]",
-      bgColor: "bg-[#8b5cf6]/10",
-      borderColor: "border-[#8b5cf6]/20"
-    }
-  ]
-
-  const myRoster = [
-    { name: "Josh Allen", position: "QB", team: "BUF", projectedPoints: 24.8, status: "active" },
-    { name: "Saquon Barkley", position: "RB", team: "NYG", projectedPoints: 18.7, status: "active" },
-    { name: "Austin Ekeler", position: "RB", team: "LAC", projectedPoints: 16.2, status: "questionable" },
-    { name: "Stefon Diggs", position: "WR", team: "BUF", projectedPoints: 19.4, status: "active" },
-    { name: "Mike Evans", position: "WR", team: "TB", projectedPoints: 17.1, status: "active" },
-    { name: "Travis Kelce", position: "TE", team: "KC", projectedPoints: 16.8, status: "active" },
-    { name: "Tyler Bass", position: "K", team: "BUF", projectedPoints: 8.2, status: "active" },
-    { name: "Buffalo Bills", position: "DST", team: "BUF", projectedPoints: 12.4, status: "active" }
-  ]
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "text-[#22c55e] border-[#22c55e]"
-      case "questionable":
-        return "text-[#f59e0b] border-[#f59e0b]"
-      case "out":
-        return "text-[#ef4444] border-[#ef4444]"
-      default:
-        return "text-[#94a3b8] border-[#94a3b8]"
-    }
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player)
+    setShowPlayerModal(true)
   }
 
   const getPositionColor = (position: string) => {
@@ -110,20 +194,19 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header - Dashboard keeps its own header */}
+      {/* Header */}
       <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
                 <Terminal className="h-6 w-6 text-[#22c55e]" />
                 <span className="text-xl font-bold font-mono">TRADEUP</span>
-              </Link>
+              </div>
               <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
                 DASHBOARD
               </Badge>
             </div>
-
             <div className="flex items-center space-x-4">
               <Button
                 onClick={() => setShowDonateModal(true)}
@@ -148,152 +231,126 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold font-mono text-[#22c55e] mb-2">DASHBOARD</h1>
-          <p className="font-mono text-sm text-[#94a3b8]">
-            Welcome back • Week {currentWeek} • Playoffs in {playoffWeeks[0] - currentWeek} weeks
-          </p>
-        </div>
-
-        {/* League Activity Ticker */}
-        <RosterTicker />
-
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="font-mono text-xl text-[#cbd5e1] mb-4">QUICK_ACTIONS</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.map((action) => (
-              <Link key={action.title} href={action.href}>
-                <Card className={`bg-[#1a1a1a] border-[#2a2a2a] hover:${action.borderColor} transition-colors cursor-pointer terminal-glow`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className={`p-2 rounded-lg ${action.bgColor} ${action.borderColor} border`}>
-                        <action.icon className={`h-5 w-5 ${action.color}`} />
-                      </div>
-                      <div>
-                        <h3 className={`font-mono text-sm font-semibold ${action.color}`}>
-                          {action.title}
-                        </h3>
-                      </div>
-                    </div>
-                    <p className="font-mono text-xs text-[#94a3b8]">
-                      {action.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* My Roster Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-mono text-xl text-[#cbd5e1]">MY_ROSTER</h2>
-            <div className="flex items-center space-x-2 text-[#94a3b8]">
-              <Calendar className="h-4 w-4" />
-              <span className="font-mono text-sm">Week {currentWeek} Projections</span>
-            </div>
-          </div>
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardContent className="p-0">
-              <div className="divide-y divide-[#2a2a2a]">
-                {myRoster.map((player, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 hover:bg-[#0f0f0f] transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <Badge 
-                        variant="outline" 
-                        className={`font-mono text-xs ${getPositionColor(player.position)}`}
-                      >
-                        {player.position}
-                      </Badge>
-                      <div>
-                        <div className="font-mono text-sm text-[#cbd5e1] font-semibold">
-                          {player.name}
-                        </div>
-                        <div className="font-mono text-xs text-[#94a3b8]">
-                          {player.team}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Badge 
-                        variant="outline" 
-                        className={`font-mono text-xs ${getStatusColor(player.status)}`}
-                      >
-                        {player.status.toUpperCase()}
-                      </Badge>
-                      <div className="text-right">
-                        <div className="font-mono text-sm text-[#22c55e] font-semibold">
-                          {player.projectedPoints} pts
-                        </div>
-                        <div className="font-mono text-xs text-[#94a3b8]">
-                          projected
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Season Progress */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader>
-              <CardTitle className="font-mono text-[#22c55e] flex items-center">
-                <Clock className="h-5 w-5 mr-2" />
-                SEASON_PROGRESS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between font-mono text-sm">
-                  <span className="text-[#94a3b8]">Week {currentWeek} of 18</span>
-                  <span className="text-[#22c55e]">{Math.round((currentWeek / 18) * 100)}%</span>
-                </div>
-                <Progress value={(currentWeek / 18) * 100} className="h-2" />
-                <div className="flex justify-between font-mono text-xs text-[#94a3b8]">
-                  <span>Regular Season</span>
-                  <span>Playoffs: Weeks {playoffWeeks.join(', ')}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-            <CardHeader>
-              <CardTitle className="font-mono text-[#22c55e] flex items-center">
-                <Zap className="h-5 w-5 mr-2" />
-                TRADE_ACTIVITY
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-[#94a3b8]">Trades This Season</span>
-                  <span className="font-mono text-lg font-bold text-[#22c55e]">23</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-[#94a3b8]">Your Trades</span>
-                  <span className="font-mono text-lg font-bold text-[#3b82f6]">4</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-[#94a3b8]">Active Proposals</span>
-                  <span className="font-mono text-lg font-bold text-[#f59e0b]">2</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Roster Activity Ticker */}
+      <div className="border-b border-[#2a2a2a]">
+        <div className="container mx-auto px-4 py-4">
+          <RosterTicker />
         </div>
       </div>
 
-      {/* Donate Modal */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Quick Actions */}
+        <QuickActions />
+
+        {/* My Roster */}
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <CardHeader>
+            <CardTitle className="text-[#cbd5e1] font-mono">MY_ROSTER</CardTitle>
+            <CardDescription className="text-[#94a3b8] font-mono text-sm">
+              Current roster analysis and projected points
+            </CardDescription>
+          </CardHeader>
+          <div className="px-6 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">TOTAL_VALUE</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">
+                  ${mockRoster.reduce((sum, player) => sum + player.value, 0)}{" "}
+                  <span className="text-sm text-[#22c55e]">(+5.1%)</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">PROJ_POINTS</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">
+                  {mockRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}{" "}
+                  <span className="text-sm text-[#ef4444]">(-1.5%)</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-mono text-xs text-[#94a3b8] mb-1">RECORD</div>
+                <div className="font-mono text-lg font-bold text-[#22c55e]">8-4-0</div>
+              </div>
+            </div>
+          </div>
+          <CardContent>
+            <div className="bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[#2a2a2a] hover:bg-transparent">
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                      POSITION
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                      PLAYER
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                      VALUE
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                      PROJ_PTS
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockRoster.map((player, index) => (
+                    <TableRow 
+                      key={index} 
+                      className="border-[#2a2a2a] hover:bg-[#1a1a1a] cursor-pointer"
+                      onClick={() => handlePlayerClick(player)}
+                    >
+                      <TableCell className="py-3 text-left">
+                        <Badge
+                          variant="outline"
+                          className={`font-mono text-xs ${getPositionColor(player.position)}`}
+                        >
+                          {player.position}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 text-left">
+                        <div>
+                          <div className="font-mono text-sm text-[#cbd5e1] font-medium hover:text-[#22c55e] transition-colors">
+                            {player.name}
+                          </div>
+                          <div className="font-mono text-xs text-[#94a3b8]">{player.nflTeam}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        <div className="font-mono text-sm text-[#22c55e] font-semibold">
+                          ${player.value}{" "}
+                          <span
+                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            ({player.weeklyTrend > 0 ? "+" : ""}
+                            {player.weeklyTrend}%)
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        <div className="font-mono text-sm text-[#cbd5e1] font-medium">
+                          {player.projectedPoints}{" "}
+                          <span
+                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            ({player.weeklyTrend > 0 ? "+" : ""}
+                            {player.weeklyTrend}%)
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <DonateModal open={showDonateModal} onOpenChange={setShowDonateModal} />
+      <PlayerOverviewModal 
+        player={selectedPlayer} 
+        open={showPlayerModal} 
+        onOpenChange={setShowPlayerModal} 
+      />
     </div>
   )
 }
