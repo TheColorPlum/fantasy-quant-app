@@ -246,13 +246,15 @@ export default function RostersPage() {
                   <div className="text-center">
                     <div className="font-mono text-xs text-[#94a3b8] mb-1">TOTAL_VALUE</div>
                     <div className="font-mono text-lg font-bold text-[#22c55e]">
-                      ${currentRoster.reduce((sum, player) => sum + player.value, 0)}
+                      ${currentRoster.reduce((sum, player) => sum + player.value, 0)}{" "}
+                      <span className="text-sm text-[#22c55e]">(+3.2%)</span>
                     </div>
                   </div>
                   <div className="text-center">
                     <div className="font-mono text-xs text-[#94a3b8] mb-1">PROJ_POINTS</div>
                     <div className="font-mono text-lg font-bold text-[#22c55e]">
-                      {currentRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}
+                      {currentRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}{" "}
+                      <span className="text-sm text-[#ef4444]">(-0.8%)</span>
                     </div>
                   </div>
                   <div className="text-center">

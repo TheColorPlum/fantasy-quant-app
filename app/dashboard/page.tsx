@@ -310,13 +310,15 @@ export default function DashboardPage() {
               <div className="text-center">
                 <div className="font-mono text-xs text-[#94a3b8] mb-1">TOTAL_VALUE</div>
                 <div className="font-mono text-lg font-bold text-[#22c55e]">
-                  ${mockRoster.reduce((sum, player) => sum + player.value, 0)}
+                  ${mockRoster.reduce((sum, player) => sum + player.value, 0)}{" "}
+                  <span className="text-sm text-[#22c55e]">(+5.1%)</span>
                 </div>
               </div>
               <div className="text-center">
                 <div className="font-mono text-xs text-[#94a3b8] mb-1">PROJ_POINTS</div>
                 <div className="font-mono text-lg font-bold text-[#22c55e]">
-                  {mockRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}
+                  {mockRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}{" "}
+                  <span className="text-sm text-[#ef4444]">(-1.5%)</span>
                 </div>
               </div>
               <div className="text-center">
@@ -380,7 +382,13 @@ export default function DashboardPage() {
                       </TableCell>
                       <TableCell className="py-3 text-center">
                         <div className="font-mono text-sm text-[#cbd5e1] font-medium">
-                          {player.projectedPoints}
+                          {player.projectedPoints}{" "}
+                          <span
+                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            ({player.weeklyTrend > 0 ? "+" : ""}
+                            {player.weeklyTrend}%)
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>
