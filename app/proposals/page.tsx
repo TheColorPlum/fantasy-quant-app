@@ -8,29 +8,28 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check, MessageSquare, Clock, AlertTriangle } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check, MessageSquare, Clock, AlertTriangle, X, Plus, UserPlus } from 'lucide-react'
+
+interface Player {
+  id: string
+  name: string
+  position: string
+  value: number
+  trend: number
+  projectedPoints: number
+  team: string
+}
 
 interface TradeProposal {
   id: string
   partner: string
   confidence: number
-  yourPlayers: Array<{
-    name: string
-    position: string
-    value: number
-    trend: number // -1 to 1, where 1 is trending up, -1 is trending down
-    projectedPoints: number
-  }>
-  theirPlayers: Array<{
-    name: string
-    position: string
-    value: number
-    trend: number
-    projectedPoints: number
-  }>
+  yourPlayers: Player[]
+  theirPlayers: Player[]
   reasoning: string
   message: string
-  valueDifferential: number // Simple calculation: their total value - your total value
+  valueDifferential: number
   context: {
     whyItWorks: string
     personalizedMessage: string
@@ -46,11 +45,28 @@ interface TradeProposal {
 export default function ProposalsPage() {
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null)
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
+  const [sendTradeDialogOpen, setSendTradeDialogOpen] = useState(false)
   const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
   const [modifyingProposal, setModifyingProposal] = useState<TradeProposal | null>(null)
   const [customMessage, setCustomMessage] = useState("")
   const [sentTrades, setSentTrades] = useState<Set<string>>(new Set())
   const [sendingTrade, setSendingTrade] = useState<string | null>(null)
+  const [selectedSendProposal, setSelectedSendProposal] = useState<TradeProposal | null>(null)
+  const [partnerHasAccount, setPartnerHasAccount] = useState(true) // Mock - would be determined by API
+  
+  // Mock available players for modification
+  const availablePlayers: Player[] = [
+    { id: "p1", name: "Saquon Barkley", position: "RB", value: 24.3, trend: 0.8, projectedPoints: 18.7, team: "your" },
+    { id: "p2", name: "Tyler Lockett", position: "WR", value: 16.8, trend: -0.2, projectedPoints: 14.2, team: "your" },
+    { id: "p3", name: "Calvin Ridley", position: "WR", value: 18.4, trend: 0.6, projectedPoints: 13.9, team: "your" },
+    { id: "p4", name: "George Kittle", position: "TE", value: 19.6, trend: 0.2, projectedPoints: 14.8, team: "your" },
+    { id: "p5", name: "Courtland Sutton", position: "WR", value: 17.2, trend: -0.1, projectedPoints: 13.1, team: "your" },
+    { id: "p6", name: "Stefon Diggs", position: "WR", value: 28.1, trend: 0.3, projectedPoints: 19.4, team: "their" },
+    { id: "p7", name: "Tony Pollard", position: "RB", value: 15.7, trend: -0.4, projectedPoints: 12.8, team: "their" },
+    { id: "p8", name: "Josh Jacobs", position: "RB", value: 21.2, trend: 0.1, projectedPoints: 15.6, team: "their" },
+    { id: "p9", name: "Travis Kelce", position: "TE", value: 22.4, trend: -0.3, projectedPoints: 16.2, team: "their" },
+    { id: "p10", name: "Rhamondre Stevenson", position: "RB", value: 16.8, trend: 0.4, projectedPoints: 12.9, team: "their" },
+  ]
 
   const proposals: TradeProposal[] = [
     {
@@ -58,52 +74,43 @@ export default function ProposalsPage() {
       partner: "Fantasy Legends",
       confidence: 87,
       yourPlayers: [
-        { name: "Saquon Barkley", position: "RB", value: 24.3, trend: 0.8, projectedPoints: 18.7 },
-        { name: "Tyler Lockett", position: "WR", value: 16.8, trend: -0.2, projectedPoints: 14.2 },
+        { id: "p1", name: "Saquon Barkley", position: "RB", value: 24.3, trend: 0.8, projectedPoints: 18.7, team: "your" },
+        { id: "p2", name: "Tyler Lockett", position: "WR", value: 16.8, trend: -0.2, projectedPoints: 14.2, team: "your" },
       ],
       theirPlayers: [
-        { name: "Stefon Diggs", position: "WR", value: 28.1, trend: 0.3, projectedPoints: 19.4 },
-        { name: "Tony Pollard", position: "RB", value: 15.7, trend: -0.4, projectedPoints: 12.8 },
+        { id: "p6", name: "Stefon Diggs", position: "WR", value: 28.1, trend: 0.3, projectedPoints: 19.4, team: "their" },
+        { id: "p7", name: "Tony Pollard", position: "RB", value: 15.7, trend: -0.4, projectedPoints: 12.8, team: "their" },
       ],
-      valueDifferential: 2.7, // (28.1 + 15.7) - (24.3 + 16.8) = 2.7
+      valueDifferential: 2.7,
       reasoning: "Partner desperately needs RB depth after CMC injury. You're loaded at RB and need WR1 upside.",
-      message:
-        "Hey! Saw CMC went down and you might need some RB help. I've got Saquon who's been crushing it lately. Would you consider Saquon + Lockett for Diggs + Pollard? Gives you a proven RB1 and I get the WR upgrade I need for playoffs.",
+      message: "Hey! Saw CMC went down and you might need some RB help. I've got Saquon who's been crushing it lately. Would you consider Saquon + Lockett for Diggs + Pollard? Gives you a proven RB1 and I get the WR upgrade I need for playoffs.",
       context: {
-        whyItWorks:
-          "This trade capitalizes on positional scarcity and timing. Your partner just lost CMC and is desperate for RB production. Saquon has been elite (RB3 overall) and provides immediate impact. Meanwhile, you upgrade from Lockett (WR24) to Diggs (WR8), giving you a true WR1 for playoffs. The value differential heavily favors you (+2.7 points), and Pollard provides decent RB depth as a sweetener.",
-        personalizedMessage:
-          "Hey! Saw CMC went down and you might need some RB help. I've got Saquon who's been crushing it lately. Would you consider Saquon + Lockett for Diggs + Pollard? Gives you a proven RB1 and I get the WR upgrade I need for playoffs.",
+        whyItWorks: "This trade capitalizes on positional scarcity and timing. Your partner just lost CMC and is desperate for RB production. Saquon has been elite (RB3 overall) and provides immediate impact. Meanwhile, you upgrade from Lockett (WR24) to Diggs (WR8), giving you a true WR1 for playoffs. The value differential heavily favors you (+2.7 points), and Pollard provides decent RB depth as a sweetener.",
+        personalizedMessage: "Hey! Saw CMC went down and you might need some RB help. I've got Saquon who's been crushing it lately. Would you consider Saquon + Lockett for Diggs + Pollard? Gives you a proven RB1 and I get the WR upgrade I need for playoffs.",
         timingAdvice: {
           bestTiming: "Send immediately",
-          reasoning:
-            "CMC injury creates maximum urgency. Partner likely panicking about RB depth and will overpay for security.",
+          reasoning: "CMC injury creates maximum urgency. Partner likely panicking about RB depth and will overpay for security.",
           riskFactors: [
             "Partner might acquire another RB before you send",
             "Saquon's recent performance might cool off",
             "Diggs has tough playoff schedule vs top defenses",
           ],
         },
-        negotiationBackup:
-          "If they hesitate, emphasize Saquon's recent dominance (3 straight 20+ point games) and offer to throw in your best bench WR to sweeten the deal. You could also pivot to a straight Saquon for Diggs swap if they're reluctant to include Pollard.",
+        negotiationBackup: "If they hesitate, emphasize Saquon's recent dominance (3 straight 20+ point games) and offer to throw in your best bench WR to sweeten the deal. You could also pivot to a straight Saquon for Diggs swap if they're reluctant to include Pollard.",
       },
     },
     {
       id: "2",
       partner: "Trade Masters",
       confidence: 82,
-      yourPlayers: [{ name: "Calvin Ridley", position: "WR", value: 18.4, trend: 0.6, projectedPoints: 13.9 }],
-      theirPlayers: [{ name: "Josh Jacobs", position: "RB", value: 21.2, trend: 0.1, projectedPoints: 15.6 }],
-      valueDifferential: 2.8, // 21.2 - 18.4 = 2.8
-      reasoning:
-        "They're stacked at RB but thin at WR. Ridley's target share trending up, perfect buy-low opportunity.",
-      message:
-        "What's up! I've been watching your team and noticed you're pretty deep at RB. I could use some help there - would you be interested in Ridley for Jacobs straight up? Ridley's been getting more targets lately and could be a nice WR2 for you.",
+      yourPlayers: [{ id: "p3", name: "Calvin Ridley", position: "WR", value: 18.4, trend: 0.6, projectedPoints: 13.9, team: "your" }],
+      theirPlayers: [{ id: "p8", name: "Josh Jacobs", position: "RB", value: 21.2, trend: 0.1, projectedPoints: 15.6, team: "their" }],
+      valueDifferential: 2.8,
+      reasoning: "They're stacked at RB but thin at WR. Ridley's target share trending up, perfect buy-low opportunity.",
+      message: "What's up! I've been watching your team and noticed you're pretty deep at RB. I could use some help there - would you be interested in Ridley for Jacobs straight up? Ridley's been getting more targets lately and could be a nice WR2 for you.",
       context: {
-        whyItWorks:
-          "You're gaining +2.8 value points in this trade. Jacobs has been consistent (RB12 overall) with a safe floor, while Ridley is trending up with increased target share. Your partner has 4 startable RBs but only 2 reliable WRs, creating natural trade synergy. The position scarcity heavily favors RBs in your league format.",
-        personalizedMessage:
-          "What's up! I've been watching your team and noticed you're pretty deep at RB. I could use some help there - would you be interested in Ridley for Jacobs straight up? Ridley's been getting more targets lately and could be a nice WR2 for you.",
+        whyItWorks: "You're gaining +2.8 value points in this trade. Jacobs has been consistent (RB12 overall) with a safe floor, while Ridley is trending up with increased target share. Your partner has 4 startable RBs but only 2 reliable WRs, creating natural trade synergy. The position scarcity heavily favors RBs in your league format.",
+        personalizedMessage: "What's up! I've been watching your team and noticed you're pretty deep at RB. I could use some help there - would you be interested in Ridley for Jacobs straight up? Ridley's been getting more targets lately and could be a nice WR2 for you.",
         timingAdvice: {
           bestTiming: "Send within 24 hours",
           reasoning: "Ridley just had a big game, maximizing his perceived value. Strike while his stock is high.",
@@ -113,8 +120,7 @@ export default function ProposalsPage() {
             "Partner might want more than 1-for-1",
           ],
         },
-        negotiationBackup:
-          "If they want more, offer to add your best bench player or pivot to a package deal. You could also wait for Ridley to have another big game to increase his trade value.",
+        negotiationBackup: "If they want more, offer to add your best bench player or pivot to a package deal. You could also wait for Ridley to have another big game to increase his trade value.",
       },
     },
     {
@@ -122,69 +128,34 @@ export default function ProposalsPage() {
       partner: "Playoff Bound",
       confidence: 79,
       yourPlayers: [
-        { name: "George Kittle", position: "TE", value: 19.6, trend: 0.2, projectedPoints: 14.8 },
-        { name: "Courtland Sutton", position: "WR", value: 17.2, trend: -0.1, projectedPoints: 13.1 },
+        { id: "p4", name: "George Kittle", position: "TE", value: 19.6, trend: 0.2, projectedPoints: 14.8, team: "your" },
+        { id: "p5", name: "Courtland Sutton", position: "WR", value: 17.2, trend: -0.1, projectedPoints: 13.1, team: "your" },
       ],
       theirPlayers: [
-        { name: "Travis Kelce", position: "TE", value: 22.4, trend: -0.3, projectedPoints: 16.2 },
-        { name: "Rhamondre Stevenson", position: "RB", value: 16.8, trend: 0.4, projectedPoints: 12.9 },
+        { id: "p9", name: "Travis Kelce", position: "TE", value: 22.4, trend: -0.3, projectedPoints: 16.2, team: "their" },
+        { id: "p10", name: "Rhamondre Stevenson", position: "RB", value: 16.8, trend: 0.4, projectedPoints: 12.9, team: "their" },
       ],
-      valueDifferential: 2.4, // (22.4 + 16.8) - (19.6 + 17.2) = 2.4
+      valueDifferential: 2.4,
       reasoning: "TE upgrade worth the slight downgrade elsewhere. Kelce's playoff schedule is elite.",
-      message:
-        "Hope you're doing well! I know we're both fighting for playoff position. I'd love to get Kelce for his playoff schedule - would you consider Kittle + Sutton for Kelce + Stevenson? Kittle's been solid and Sutton gives you another reliable WR option.",
+      message: "Hope you're doing well! I know we're both fighting for playoff position. I'd love to get Kelce for his playoff schedule - would you consider Kittle + Sutton for Kelce + Stevenson? Kittle's been solid and Sutton gives you another reliable WR option.",
       context: {
-        whyItWorks:
-          "Kelce's playoff schedule (weeks 15-17) is elite - facing bottom-5 defenses vs TEs. The TE position upgrade from Kittle to Kelce (+2.8 value) outweighs the slight downgrade from Sutton to Stevenson. You're essentially trading WR depth for TE dominance, which is valuable given TE scarcity. Net value gain of +2.4 points.",
-        personalizedMessage:
-          "Hope you're doing well! I know we're both fighting for playoff position. I'd love to get Kelce for his playoff schedule - would you consider Kittle + Sutton for Kelce + Stevenson? Kittle's been solid and Sutton gives you another reliable WR option.",
+        whyItWorks: "Kelce's playoff schedule (weeks 15-17) is elite - facing bottom-5 defenses vs TEs. The TE position upgrade from Kittle to Kelce (+2.8 value) outweighs the slight downgrade from Sutton to Stevenson. You're essentially trading WR depth for TE dominance, which is valuable given TE scarcity. Net value gain of +2.4 points.",
+        personalizedMessage: "Hope you're doing well! I know we're both fighting for playoff position. I'd love to get Kelce for his playoff schedule - would you consider Kittle + Sutton for Kelce + Stevenson? Kittle's been solid and Sutton gives you another reliable WR option.",
         timingAdvice: {
           bestTiming: "Send before Week 13",
-          reasoning:
-            "Playoff positioning becomes clearer soon. Strike while both teams are still fighting for seeding.",
+          reasoning: "Playoff positioning becomes clearer soon. Strike while both teams are still fighting for seeding.",
           riskFactors: [
             "Kelce's age concerns might surface",
             "Kittle's injury history could be a deterrent",
             "Stevenson's workload might decrease",
           ],
         },
-        negotiationBackup:
-          "Emphasize Kelce's playoff matchups and your need for TE consistency. If they hesitate, offer to swap Stevenson for a different player or add a future draft pick consideration.",
-      },
-    },
-    {
-      id: "4",
-      partner: "Defense Dynasty",
-      confidence: 74,
-      yourPlayers: [{ name: "Miami Dolphins", position: "DST", value: 8.2, trend: -0.6, projectedPoints: 7.4 }],
-      theirPlayers: [{ name: "San Francisco 49ers", position: "DST", value: 12.1, trend: 0.4, projectedPoints: 9.8 }],
-      valueDifferential: 3.9, // 12.1 - 8.2 = 3.9
-      reasoning:
-        "49ers defense has elite playoff schedule while Dolphins face tough offenses. Solid upgrade opportunity.",
-      message:
-        "Hey! I noticed you've been streaming defenses lately. I've got the 49ers DST and they have a great playoff schedule - would you be interested in swapping for the Dolphins? 49ers face some weaker offenses down the stretch.",
-      context: {
-        whyItWorks:
-          "The 49ers defense has a significantly better playoff schedule, facing bottom-10 offenses in weeks 15-17. Miami's defense has been inconsistent and faces high-powered offenses like Buffalo and the Jets. The +3.9 value differential makes this a clear upgrade, and your partner has been streaming defenses, indicating they're not attached to any particular unit.",
-        personalizedMessage:
-          "Hey! I noticed you've been streaming defenses lately. I've got the 49ers DST and they have a great playoff schedule - would you be interested in swapping for the Dolphins? 49ers face some weaker offenses down the stretch.",
-        timingAdvice: {
-          bestTiming: "Send before Week 12",
-          reasoning:
-            "Playoff schedules become more important as we approach fantasy playoffs. Strike before they realize the value.",
-          riskFactors: [
-            "49ers might have injury concerns",
-            "Partner might prefer streaming approach",
-            "Dolphins could have a bounce-back game",
-          ],
-        },
-        negotiationBackup:
-          "If they're hesitant, emphasize the specific matchups: 49ers face Arizona, Chicago, and Detroit in playoffs while Dolphins face Buffalo, Dallas, and Baltimore. You could also offer to throw in a bench player to sweeten the deal.",
+        negotiationBackup: "Emphasize Kelce's playoff matchups and your need for TE consistency. If they hesitate, offer to swap Stevenson for a different player or add a future draft pick consideration.",
       },
     },
   ]
 
-  const calculateTotalValue = (players: Array<{ value: number }>) => {
+  const calculateTotalValue = (players: Player[]) => {
     return players.reduce((sum, player) => sum + player.value, 0)
   }
 
@@ -213,29 +184,96 @@ export default function ProposalsPage() {
     }
   }
 
+  const handleSendTrade = (proposal: TradeProposal) => {
+    setSelectedSendProposal(proposal)
+    setSendTradeDialogOpen(true)
+    // Copy message to clipboard
+    navigator.clipboard.writeText(proposal.message)
+  }
+
   const handleModifyTrade = (proposal: TradeProposal) => {
-    setModifyingProposal(proposal)
-    setCustomMessage(proposal.message)
+    setModifyingProposal({
+      ...proposal,
+      yourPlayers: [...proposal.yourPlayers],
+      theirPlayers: [...proposal.theirPlayers]
+    })
     setModifyDialogOpen(true)
   }
 
-  const handleSendTrade = async (proposalId: string) => {
-    setSendingTrade(proposalId)
+  const handleConfirmSend = async () => {
+    if (!selectedSendProposal) return
+    
+    setSendingTrade(selectedSendProposal.id)
+    setSendTradeDialogOpen(false)
 
-    // Simulate sending trade to fantasy platform
+    // Simulate sending trade
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    setSentTrades((prev) => new Set([...prev, proposalId]))
+    setSentTrades((prev) => new Set([...prev, selectedSendProposal.id]))
     setSendingTrade(null)
+    setSelectedSendProposal(null)
   }
 
   const handleSaveModification = () => {
     if (modifyingProposal) {
-      // In a real app, this would update the proposal with the custom message
-      console.log("Updated message:", customMessage)
+      // In a real app, this would regenerate the analysis based on new trade composition
+      console.log("Saving modified trade:", modifyingProposal)
       setModifyDialogOpen(false)
       setModifyingProposal(null)
     }
+  }
+
+  const addPlayerToTrade = (playerId: string, side: 'your' | 'their') => {
+    if (!modifyingProposal) return
+    
+    const player = availablePlayers.find(p => p.id === playerId)
+    if (!player) return
+
+    const updatedProposal = { ...modifyingProposal }
+    
+    if (side === 'your') {
+      updatedProposal.yourPlayers = [...updatedProposal.yourPlayers, player]
+    } else {
+      updatedProposal.theirPlayers = [...updatedProposal.theirPlayers, player]
+    }
+
+    // Recalculate value differential
+    const yourTotal = calculateTotalValue(updatedProposal.yourPlayers)
+    const theirTotal = calculateTotalValue(updatedProposal.theirPlayers)
+    updatedProposal.valueDifferential = theirTotal - yourTotal
+
+    setModifyingProposal(updatedProposal)
+  }
+
+  const removePlayerFromTrade = (playerId: string, side: 'your' | 'their') => {
+    if (!modifyingProposal) return
+
+    const updatedProposal = { ...modifyingProposal }
+    
+    if (side === 'your') {
+      updatedProposal.yourPlayers = updatedProposal.yourPlayers.filter(p => p.id !== playerId)
+    } else {
+      updatedProposal.theirPlayers = updatedProposal.theirPlayers.filter(p => p.id !== playerId)
+    }
+
+    // Recalculate value differential
+    const yourTotal = calculateTotalValue(updatedProposal.yourPlayers)
+    const theirTotal = calculateTotalValue(updatedProposal.theirPlayers)
+    updatedProposal.valueDifferential = theirTotal - yourTotal
+
+    setModifyingProposal(updatedProposal)
+  }
+
+  const getAvailablePlayersForSide = (side: 'your' | 'their') => {
+    if (!modifyingProposal) return []
+    
+    const currentPlayerIds = side === 'your' 
+      ? modifyingProposal.yourPlayers.map(p => p.id)
+      : modifyingProposal.theirPlayers.map(p => p.id)
+    
+    return availablePlayers.filter(p => 
+      p.team === side && !currentPlayerIds.includes(p.id)
+    )
   }
 
   return (
@@ -250,15 +288,13 @@ export default function ProposalsPage() {
             </p>
           </div>
 
-          {/* Summary Stats */}
-
           <div className="grid grid-cols-1 gap-8">
             {/* Trade Proposals List */}
             <div className="space-y-6">
               {proposals.map((proposal) => (
                 <Card
                   key={proposal.id}
-                  className={`bg-[#1a1a1a] border-[#2a2a2a] terminal-glow cursor-pointer transition-all ${
+                  className={`bg-[#1a1a1a] border-[#2a2a2a] terminal-glow transition-all ${
                     sentTrades.has(proposal.id) ? "opacity-60" : ""
                   }`}
                 >
@@ -396,6 +432,53 @@ export default function ProposalsPage() {
                       <p className="font-mono text-sm text-[#cbd5e1]">{proposal.reasoning}</p>
                     </div>
 
+                    {/* Action Buttons - Always Visible */}
+                    <div className="flex gap-3 pt-4">
+                      {sentTrades.has(proposal.id) ? (
+                        <Button
+                          disabled
+                          className="flex-1 bg-[#22c55e]/20 text-[#22c55e] font-mono font-semibold cursor-not-allowed"
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          TRADE_SENT
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSendTrade(proposal)
+                            }}
+                            disabled={sendingTrade === proposal.id}
+                            className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                          >
+                            {sendingTrade === proposal.id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                                SENDING...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="mr-2 h-4 w-4" />
+                                SEND_TRADE
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleModifyTrade(proposal)
+                            }}
+                            variant="outline"
+                            className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            MODIFY
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
                     {/* Expanded Details */}
                     <Collapsible open={expandedProposal === proposal.id}>
                       <CollapsibleContent className="space-y-4">
@@ -421,7 +504,7 @@ export default function ProposalsPage() {
                           <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">{proposal.message}</p>
                         </div>
 
-                        {/* Trade Intelligence - incorporated directly */}
+                        {/* Trade Intelligence */}
                         <div className="space-y-4">
                           <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
                             <div className="flex items-center space-x-2 mb-2">
@@ -469,53 +552,6 @@ export default function ProposalsPage() {
                             </div>
                           )}
                         </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-3 pt-4">
-                          {sentTrades.has(proposal.id) ? (
-                            <Button
-                              disabled
-                              className="flex-1 bg-[#22c55e]/20 text-[#22c55e] font-mono font-semibold cursor-not-allowed"
-                            >
-                              <Check className="mr-2 h-4 w-4" />
-                              TRADE_SENT
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleSendTrade(proposal.id)
-                                }}
-                                disabled={sendingTrade === proposal.id}
-                                className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
-                              >
-                                {sendingTrade === proposal.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-                                    SENDING...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    SEND_TRADE
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleModifyTrade(proposal)
-                                }}
-                                variant="outline"
-                                className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                MODIFY
-                              </Button>
-                            </>
-                          )}
-                        </div>
                       </CollapsibleContent>
                     </Collapsible>
                   </CardContent>
@@ -526,74 +562,272 @@ export default function ProposalsPage() {
         </div>
       </div>
 
-      {/* Modify Trade Dialog */}
-      <Dialog open={modifyDialogOpen} onOpenChange={setModifyDialogOpen}>
+      {/* Send Trade Dialog */}
+      <Dialog open={sendTradeDialogOpen} onOpenChange={setSendTradeDialogOpen}>
         <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-mono text-[#22c55e]">MODIFY_TRADE: {modifyingProposal?.partner}</DialogTitle>
+            <DialogTitle className="font-mono text-[#22c55e]">
+              SEND_TRADE: {selectedSendProposal?.partner}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Trade Summary */}
-            {modifyingProposal && (
-              <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-4 font-mono text-sm">
-                  <div>
-                    <p className="text-[#94a3b8] mb-2">YOU_TRADE:</p>
-                    {modifyingProposal.yourPlayers.map((player, index) => (
-                      <div key={index} className="text-[#cbd5e1] flex items-center space-x-2">
-                        <span>{player.name}</span>
-                        <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
-                          {player.position}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-[#94a3b8] mb-2">YOU_RECEIVE:</p>
-                    {modifyingProposal.theirPlayers.map((player, index) => (
-                      <div key={index} className="text-[#22c55e] flex items-center space-x-2">
-                        <span>{player.name}</span>
-                        <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
-                          {player.position}
-                        </Badge>
-                      </div>
-                    ))}
+            {selectedSendProposal && (
+              <>
+                {/* Trade Summary */}
+                <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 font-mono text-sm">
+                    <div>
+                      <p className="text-[#94a3b8] mb-2">YOU_TRADE:</p>
+                      {selectedSendProposal.yourPlayers.map((player, index) => (
+                        <div key={index} className="text-[#cbd5e1] flex items-center space-x-2">
+                          <span>{player.name}</span>
+                          <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
+                            {player.position}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-[#94a3b8] mb-2">YOU_RECEIVE:</p>
+                      {selectedSendProposal.theirPlayers.map((player, index) => (
+                        <div key={index} className="text-[#22c55e] flex items-center space-x-2">
+                          <span>{player.name}</span>
+                          <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
+                            {player.position}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Message (Already Copied) */}
+                <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Check className="h-4 w-4 text-[#22c55e]" />
+                    <p className="font-mono text-xs text-[#22c55e]">MESSAGE_COPIED_TO_CLIPBOARD</p>
+                  </div>
+                  <p className="font-mono text-sm text-[#cbd5e1] leading-relaxed">
+                    {selectedSendProposal.message}
+                  </p>
+                </div>
+
+                {/* Partner Account Status */}
+                {partnerHasAccount ? (
+                  <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Check className="h-4 w-4 text-[#22c55e]" />
+                      <p className="font-mono text-xs text-[#22c55e]">PARTNER_HAS_ACCOUNT</p>
+                    </div>
+                    <p className="font-mono text-sm text-[#cbd5e1]">
+                      This trade will be sent directly to {selectedSendProposal.partner}'s proposals list.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <UserPlus className="h-4 w-4 text-[#f59e0b]" />
+                      <p className="font-mono text-xs text-[#f59e0b]">PARTNER_NOT_ON_APP</p>
+                    </div>
+                    <p className="font-mono text-sm text-[#cbd5e1] mb-3">
+                      {selectedSendProposal.partner} doesn't have an account yet. You can copy the message and invite them to join.
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  {partnerHasAccount ? (
+                    <Button
+                      onClick={handleConfirmSend}
+                      className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      CONFIRM_SEND
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedSendProposal.message)
+                          // In real app, would copy invite link
+                        }}
+                        className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        COPY_MESSAGE
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          // In real app, would send invite
+                          console.log("Sending invite to", selectedSendProposal.partner)
+                        }}
+                        className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-mono font-semibold"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        INVITE_TO_APP
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    onClick={() => setSendTradeDialogOpen(false)}
+                    variant="outline"
+                    className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
+                  >
+                    CANCEL
+                  </Button>
+                </div>
+              </>
             )}
-
-            {/* Custom Message */}
-            <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#94a3b8]">CUSTOM_MESSAGE:</Label>
-              <Textarea
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value)}
-                className="bg-[#0f0f0f] border-[#2a2a2a] text-white font-mono text-sm min-h-[120px] resize-none"
-                placeholder="Customize your trade message..."
-                maxLength={500}
-              />
-              <p className="font-mono text-xs text-[#94a3b8]">{customMessage.length}/500 characters</p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button
-                onClick={handleSaveModification}
-                className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
-              >
-                SAVE_CHANGES
-              </Button>
-              <Button
-                onClick={() => setModifyDialogOpen(false)}
-                variant="outline"
-                className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
-              >
-                CANCEL
-              </Button>
-            </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modify Trade Dialog */}
+      <Dialog open={modifyDialogOpen} onOpenChange={setModifyDialogOpen}>
+        <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-[#22c55e]">
+              MODIFY_TRADE: {modifyingProposal?.partner}
+            </DialogTitle>
+          </DialogHeader>
+
+          {modifyingProposal && (
+            <div className="space-y-6">
+              {/* Real-time Value Display */}
+              <div className="text-center font-mono bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                <div className="text-[#94a3b8] text-xs mb-1">CURRENT_VALUE_DIFFERENTIAL</div>
+                <div
+                  className={`font-bold text-3xl ${
+                    modifyingProposal.valueDifferential > 0 ? "text-[#22c55e]" : "text-[#ef4444]"
+                  }`}
+                >
+                  {modifyingProposal.valueDifferential > 0 ? "+" : ""}
+                  ${modifyingProposal.valueDifferential.toFixed(1)}
+                </div>
+                <div className="text-[#94a3b8] text-xs">DOLLAR VALUE</div>
+              </div>
+
+              {/* Trade Modification Interface */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Your Players */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm text-[#94a3b8]">YOUR_PLAYERS:</p>
+                    <p className="font-mono text-xs text-[#ef4444]">
+                      -${calculateTotalValue(modifyingProposal.yourPlayers).toFixed(1)}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {modifyingProposal.yourPlayers.map((player) => (
+                      <div
+                        key={player.id}
+                        className="font-mono text-sm text-[#cbd5e1] bg-[#0f0f0f] px-3 py-2 rounded border border-[#2a2a2a] flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold">{player.name}</span>
+                          <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
+                            {player.position}
+                          </Badge>
+                          <span className="text-xs text-[#94a3b8]">${player.value.toFixed(1)}</span>
+                        </div>
+                        <Button
+                          onClick={() => removePlayerFromTrade(player.id, 'your')}
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-[#ef4444] hover:text-[#dc2626] hover:bg-[#ef4444]/10"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Player Dropdown */}
+                  <Select onValueChange={(playerId) => addPlayerToTrade(playerId, 'your')}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] text-white font-mono">
+                      <SelectValue placeholder="ADD_PLAYER" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                      {getAvailablePlayersForSide('your').map((player) => (
+                        <SelectItem key={player.id} value={player.id} className="font-mono">
+                          {player.name} ({player.position}) - ${player.value.toFixed(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Their Players */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm text-[#94a3b8]">THEIR_PLAYERS:</p>
+                    <p className="font-mono text-xs text-[#22c55e]">
+                      +${calculateTotalValue(modifyingProposal.theirPlayers).toFixed(1)}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {modifyingProposal.theirPlayers.map((player) => (
+                      <div
+                        key={player.id}
+                        className="font-mono text-sm text-[#22c55e] bg-[#22c55e]/5 px-3 py-2 rounded border border-[#22c55e]/20 flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold">{player.name}</span>
+                          <Badge variant="outline" className={`font-mono text-xs ${getPositionColor(player.position)}`}>
+                            {player.position}
+                          </Badge>
+                          <span className="text-xs text-[#94a3b8]">${player.value.toFixed(1)}</span>
+                        </div>
+                        <Button
+                          onClick={() => removePlayerFromTrade(player.id, 'their')}
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-[#ef4444] hover:text-[#dc2626] hover:bg-[#ef4444]/10"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Player Dropdown */}
+                  <Select onValueChange={(playerId) => addPlayerToTrade(playerId, 'their')}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] text-white font-mono">
+                      <SelectValue placeholder="ADD_PLAYER" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                      {getAvailablePlayersForSide('their').map((player) => (
+                        <SelectItem key={player.id} value={player.id} className="font-mono">
+                          {player.name} ({player.position}) - ${player.value.toFixed(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSaveModification}
+                  className="flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-semibold"
+                >
+                  SAVE_CHANGES
+                </Button>
+                <Button
+                  onClick={() => setModifyDialogOpen(false)}
+                  variant="outline"
+                  className="border-[#2a2a2a] text-[#cbd5e1] hover:bg-[#2a2a2a] bg-transparent font-mono"
+                >
+                  CANCEL
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
