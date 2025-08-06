@@ -361,7 +361,6 @@ export default function PlayersPage() {
                   <TableRow className="border-[#2a2a2a] hover:bg-transparent">
                     <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">POSITION</TableHead>
                     <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">PLAYER</TableHead>
-                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">OWNED BY</TableHead>
                     <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">VALUE</TableHead>
                     <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">PROJ_PTS</TableHead>
                   </TableRow>
@@ -383,11 +382,6 @@ export default function PlayersPage() {
                             {player.name}
                           </div>
                           <div className="font-mono text-xs text-[#94a3b8]">{player.nflTeam}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3 text-left">
-                        <div className={`font-mono text-sm ${player.owned ? "text-[#cbd5e1]" : "text-[#94a3b8]"}`}>
-                          {player.fantasyTeam}
                         </div>
                       </TableCell>
                       <TableCell className="py-3 text-center">

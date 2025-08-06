@@ -55,23 +55,20 @@ export default function DashboardPage() {
 
   const getPositionColor = (position: string) => {
     switch (position) {
-      case 'QB': return 'bg-purple-600'
-      case 'RB': return 'bg-green-600'
-      case 'WR': return 'bg-blue-600'
-      case 'TE': return 'bg-orange-600'
-      case 'K': return 'bg-yellow-600'
-      case 'DST': return 'bg-red-600'
-      default: return 'bg-gray-600'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-400" />
-      case 'questionable': return <Clock className="h-4 w-4 text-yellow-400" />
-      case 'doubtful': return <AlertTriangle className="h-4 w-4 text-orange-400" />
-      case 'out': return <AlertTriangle className="h-4 w-4 text-red-400" />
-      default: return <CheckCircle className="h-4 w-4 text-green-400" />
+      case "QB":
+        return "text-[#ef4444] border-[#ef4444]"
+      case "RB":
+        return "text-[#22c55e] border-[#22c55e]"
+      case "WR":
+        return "text-[#3b82f6] border-[#3b82f6]"
+      case "TE":
+        return "text-[#f59e0b] border-[#f59e0b]"
+      case "K":
+        return "text-[#94a3b8] border-[#94a3b8]"
+      case "DST":
+        return "text-[#8b5cf6] border-[#8b5cf6]"
+      default:
+        return "text-[#cbd5e1] border-[#cbd5e1]"
     }
   }
 
@@ -190,58 +187,64 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-[#2a2a2a] hover:bg-transparent">
-                  <TableHead className="text-[#94a3b8] font-mono text-xs">POSITION</TableHead>
-                  <TableHead className="text-[#94a3b8] font-mono text-xs">PLAYER</TableHead>
-                  <TableHead className="text-[#94a3b8] font-mono text-xs">VALUE</TableHead>
-                  <TableHead className="text-[#94a3b8] font-mono text-xs">PROJ_PTS</TableHead>
-                  <TableHead className="text-[#94a3b8] font-mono text-xs">STATUS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockRoster.map((player) => (
-                  <TableRow 
-                    key={player.id} 
-                    className="border-[#2a2a2a] hover:bg-[#1a1a1a] cursor-pointer"
-                  >
-                    <TableCell>
-                      <Badge className={`${getPositionColor(player.position)} text-white font-mono text-xs`}>
-                        {player.position}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium text-[#cbd5e1] text-sm">{player.name}</div>
-                        <div className="text-[#94a3b8] text-xs font-mono">{player.team}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[#cbd5e1] font-mono text-sm">{player.value}</span>
-                        <span className={`text-xs font-mono ${
-                          player.trend > 0 ? 'text-green-400' : player.trend < 0 ? 'text-red-400' : 'text-[#94a3b8]'
-                        }`}>
-                          {player.trend > 0 ? '+' : ''}{player.trend.toFixed(1)}%
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-[#cbd5e1] font-mono text-sm">{player.projectedPoints}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(player.status)}
-                        <span className="text-[#94a3b8] text-xs font-mono capitalize">
-                          {player.status}
-                        </span>
-                      </div>
-                    </TableCell>
+            <div className="bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[#2a2a2a] hover:bg-transparent">
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                      POSITION
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
+                      PLAYER
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                      VALUE
+                    </TableHead>
+                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
+                      PROJ_PTS
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {mockRoster.map((player, index) => (
+                    <TableRow key={index} className="border-[#2a2a2a] hover:bg-[#1a1a1a]">
+                      <TableCell className="py-3 text-left">
+                        <Badge
+                          variant="outline"
+                          className={`font-mono text-xs ${getPositionColor(player.position)}`}
+                        >
+                          {player.position}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 text-left">
+                        <div>
+                          <div className="font-mono text-sm text-[#cbd5e1] font-medium">
+                            {player.name}
+                          </div>
+                          <div className="font-mono text-xs text-[#94a3b8]">{player.team}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        <div className="font-mono text-sm text-[#22c55e] font-semibold">
+                          ${player.value}{" "}
+                          <span
+                            className={`text-xs ${player.trend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            ({player.trend > 0 ? "+" : ""}
+                            {player.trend}%)
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        <div className="font-mono text-sm text-[#cbd5e1] font-medium">
+                          {player.projectedPoints}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
