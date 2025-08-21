@@ -2,170 +2,172 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check, Plus } from "lucide-react"
-
-interface TradeProposal {
-  id: string
-  partner: string
-  confidence: number
-  yourPlayers: Array<{
-    name: string
-    position: string
-    value: number
-    trend: number
-    projectedPoints: number
-  }>
-  theirPlayers: Array<{
-    name: string
-    position: string
-    value: number
-    trend: number
-    projectedPoints: number
-  }>
-  reasoning: string
-  message: string
-  valueDifferential: number
-  context: {
-    whyItWorks: string
-    personalizedMessage: string
-    timingAdvice: {
-      bestTiming: string
-      reasoning: string
-      riskFactors: string[]
-    }
-    negotiationBackup?: string
-  }
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, Eye } from "lucide-react"
+import { useProposalsStore, type Proposal } from "@/lib/proposals-store"
+import { useRouter } from "next/navigation"
 
 export default function ProposalsPage() {
-  const [expandedProposal, setExpandedProposal] = useState<string | null>(null)
+  const router = useRouter()
+  const { proposals, accept, decline, counter, getInboxProposals, getOutboxProposals } = useProposalsStore()
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
-  const [selectedProposal, setSelectedProposal] = useState<TradeProposal | null>(null)
-  const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
-  const [modifyingProposal, setModifyingProposal] = useState<TradeProposal | null>(null)
-  const [customMessage, setCustomMessage] = useState("")
-  const [sentTrades, setSentTrades] = useState<Set<string>>(new Set())
-  const [sendingTrade, setSendingTrade] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("inbox")
 
-  const proposals: TradeProposal[] = [
-    {
-      id: "1",
-      partner: "Fantasy Legends",
-      confidence: 87,
-      yourPlayers: [
-        { name: "Saquon Barkley", position: "RB", value: 24.3, trend: 0.8, projectedPoints: 18.7 },
-        { name: "Tyler Lockett", position: "WR", value: 16.8, trend: -0.2, projectedPoints: 14.2 },
-      ],
-      theirPlayers: [
-        { name: "Stefon Diggs", position: "WR", value: 28.1, trend: 0.3, projectedPoints: 19.4 },
-        { name: "Tony Pollard", position: "RB", value: 15.7, trend: -0.4, projectedPoints: 12.8 },
-      ],
-      valueDifferential: 2.7,
-      reasoning: "Partner needs RB depth after CMC injury. You’re deep at RB and need WR1 upside.",
-      message:
-        "Hey! Saw CMC went down and you might need some RB help. I've got Saquon who's been crushing it lately. Would you consider Saquon + Lockett for Diggs + Pollard?",
-      context: {
-        whyItWorks:
-          "Positional scarcity and timing. Saquon provides immediate RB impact. You upgrade from Lockett to Diggs.",
-        personalizedMessage:
-          "Hey! Saw CMC went down and you might need some RB help. I've got Saquon—would you consider Saquon + Lockett for Diggs + Pollard?",
-        timingAdvice: {
-          bestTiming: "Send immediately",
-          reasoning: "CMC injury creates urgency.",
-          riskFactors: ["They add another RB", "Saquon cools off", "Diggs playoff schedule is tough"],
-        },
-        negotiationBackup: "Offer a bench WR if needed.",
-      },
-    },
-    {
-      id: "2",
-      partner: "Trade Masters",
-      confidence: 82,
-      yourPlayers: [{ name: "Calvin Ridley", position: "WR", value: 18.4, trend: 0.6, projectedPoints: 13.9 }],
-      theirPlayers: [{ name: "Josh Jacobs", position: "RB", value: 21.2, trend: 0.1, projectedPoints: 15.6 }],
-      valueDifferential: 2.8,
-      reasoning: "They’re stacked at RB but thin at WR. Ridley trending up — good timing.",
-      message:
-        "What's up! You're deep at RB. Ridley for Jacobs straight up? Ridley's targets are up and he can be a solid WR2.",
-      context: {
-        whyItWorks: "You gain +2.8 value and balance positions.",
-        personalizedMessage:
-          "What's up! You're deep at RB. Ridley for Jacobs straight up? Ridley's targets are up and he can be a solid WR2.",
-        timingAdvice: {
-          bestTiming: "Within 24 hours",
-          reasoning: "Ridley just had a big game — strike while hot.",
-          riskFactors: ["Ridley regression", "Jacobs soft schedule", "They want add-ons"],
-        },
-        negotiationBackup: "Add a bench piece if they hesitate.",
-      },
-    },
-  ]
+  const currentTeamId = "team1"
+
+  const inboxProposals = getInboxProposals(currentTeamId)
+  const outboxProposals = getOutboxProposals(currentTeamId)
 
   const copyMessage = (message: string, proposalId: string) => {
-    navigator.clipboard.writeText(message)
-    setCopiedMessage(proposalId)
-    setTimeout(() => setCopiedMessage(null), 2000)
+    if (message) {
+      navigator.clipboard.writeText(message)
+      setCopiedMessage(proposalId)
+      setTimeout(() => setCopiedMessage(null), 2000)
+    }
   }
 
-  const calculateTotalValue = (players: Array<{ value: number }>) =>
-    players.reduce((sum, player) => sum + player.value, 0)
-
-  const getTrendIcon = (trend: number) => {
-    if (trend > 0.3) return <TrendingUp className="h-3 w-3" style={{ color: "#00FF85" }} />
-    if (trend < -0.3) return <TrendingDown className="h-3 w-3" style={{ color: "#FF3B30" }} />
-    return <div className="h-3 w-3 rounded-full" style={{ background: "#94A3B8" }} />
+  const handleAccept = (id: string) => {
+    accept(id)
   }
 
-  const getPositionStyle = (position: string) => {
-    switch (position) {
-      case "QB":
-        return { color: "#FF3B30", borderColor: "#FF3B30" }
-      case "RB":
-        return { color: "#00FF85", borderColor: "#00FF85" }
-      case "WR":
-        return { color: "#38BDF8", borderColor: "#38BDF8" }
-      case "TE":
-        return { color: "#F59E0B", borderColor: "#F59E0B" }
-      case "K":
-        return { color: "#94A3B8", borderColor: "#94A3B8" }
-      case "DST":
-        return { color: "#8B5CF6", borderColor: "#8B5CF6" }
+  const handleDecline = (id: string) => {
+    decline(id)
+  }
+
+  const handleCounter = (id: string) => {
+    router.push(`/trades?counter=${id}`)
+  }
+
+  const openDetail = (proposal: Proposal) => {
+    setSelectedProposal(proposal)
+    setDetailDialogOpen(true)
+  }
+
+  const getStatusColor = (status: Proposal["status"]) => {
+    switch (status) {
+      case "draft":
+        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+      case "sent":
+        return "bg-blue-500/10 text-blue-500 border-blue-500/20"
+      case "accepted":
+        return "bg-green-500/10 text-green-500 border-green-500/20"
+      case "declined":
+        return "bg-red-500/10 text-red-500 border-red-500/20"
+      case "countered":
+        return "bg-purple-500/10 text-purple-500 border-purple-500/20"
       default:
-        return { color: "#94A3B8", borderColor: "#94A3B8" }
+        return "bg-gray-500/10 text-gray-500 border-gray-500/20"
     }
   }
 
-  const handleModifyTrade = (proposal: TradeProposal) => {
-    setModifyingProposal(proposal)
-    setCustomMessage(proposal.message)
-    setModifyDialogOpen(true)
-  }
-
-  const handleSendTrade = async (proposalId: string) => {
-    setSendingTrade(proposalId)
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-    setSentTrades((prev) => new Set([...prev, proposalId]))
-    setSendingTrade(null)
-  }
-
-  const handleSaveModification = () => {
-    if (modifyingProposal) {
-      console.log("Updated message:", customMessage)
-      setModifyDialogOpen(false)
-      setModifyingProposal(null)
+  const getPartnerName = (proposal: Proposal, isInbox: boolean) => {
+    const teamNames: Record<string, string> = {
+      team1: "Your Team",
+      team2: "Fantasy Kings",
+      team3: "Gridiron Heroes",
     }
+
+    const partnerId = isInbox ? proposal.fromTeamId : proposal.toTeamId
+    return teamNames[partnerId] || "Unknown Team"
   }
+
+  const ProposalCard = ({ proposal, isInbox }: { proposal: Proposal; isInbox: boolean }) => (
+    <Card className="bg-card border-border">
+      <CardHeader className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{isInbox ? "From" : "To"}</span>
+            <span className="font-medium">{getPartnerName(proposal, isInbox)}</span>
+            <Badge variant="outline" className={`rounded-md ${getStatusColor(proposal.status)}`}>
+              {proposal.status}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Value Differential</p>
+              <p className={`font-mono ${proposal.valueDifferential >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                {proposal.valueDifferential >= 0 ? "+" : ""}
+                {proposal.valueDifferential.toFixed(1)}
+              </p>
+            </div>
+            <div className="hidden md:block text-right">
+              <p className="text-xs text-muted-foreground">Confidence</p>
+              <p className="font-mono">{proposal.confidence}%</p>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">You Give</p>
+            <div className="flex flex-wrap gap-2">
+              {proposal.give.map((p) => (
+                <Badge key={p.id} className="rounded-md" variant="secondary">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">You Get</p>
+            <div className="flex flex-wrap gap-2">
+              {proposal.get.map((p) => (
+                <Badge key={p.id} className="rounded-md" variant="secondary">
+                  {p.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          {proposal.message && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-md bg-transparent"
+              onClick={() => copyMessage(proposal.message!, proposal.id)}
+            >
+              {copiedMessage === proposal.id ? "Copied!" : "Copy"}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-md bg-transparent"
+            onClick={() => openDetail(proposal)}
+          >
+            <Eye className="mr-1 h-3 w-3" />
+            Details
+          </Button>
+          {isInbox && proposal.status === "sent" ? (
+            <>
+              <Button size="sm" className="rounded-md" onClick={() => handleAccept(proposal.id)}>
+                Accept
+              </Button>
+              <Button variant="secondary" size="sm" className="rounded-md" onClick={() => handleCounter(proposal.id)}>
+                Counter
+              </Button>
+              <Button variant="destructive" size="sm" className="rounded-md" onClick={() => handleDecline(proposal.id)}>
+                Decline
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" className="rounded-md" onClick={() => handleCounter(proposal.id)}>
+              Edit/Counter
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   return (
-    <div className="min-h-screen" style={{ background: "#0E0F11", color: "#E5E7EB" }}>
+    <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-background/60 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between gap-3">
@@ -173,499 +175,103 @@ export default function ProposalsPage() {
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Proposals</h1>
               <p className="text-sm text-muted-foreground">Review and respond to trade proposals (Inbox & Outbox)</p>
             </div>
-            <Button className="rounded-[2px]" style={{ background: "#00FF85", color: "#000" }}>
+            <Button onClick={() => router.push("/trades")} className="rounded-md">
               <Plus className="mr-2 h-4 w-4" />
               New Proposal
             </Button>
           </div>
-          <div className="mt-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
-                <TabsTrigger value="inbox" className="text-xs">
-                  Inbox
-                </TabsTrigger>
-                <TabsTrigger value="outbox" className="text-xs">
-                  Outbox
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
         </div>
       </div>
 
-      <div className="py-8">
-        <div className="max-w-[1280px] mx-auto">
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card style={{ background: "#121417", borderColor: "#2E2E2E" }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-xs" style={{ color: "#9AA4B2" }}>
-                      Total Value Gain
-                    </p>
-                    <p className="font-mono text-2xl font-bold" style={{ color: "#00FF85" }}>
-                      +{proposals.reduce((sum, p) => sum + p.valueDifferential, 0).toFixed(1)}
-                    </p>
-                  </div>
-                  <BarChart3 className="h-8 w-8" style={{ color: "#00FF85" }} />
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <Tabs defaultValue="inbox" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="inbox">Inbox</TabsTrigger>
+            <TabsTrigger value="outbox">Outbox</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inbox" className="mt-6">
+            <div className="space-y-4">
+              {inboxProposals.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No proposals in your inbox</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card style={{ background: "#121417", borderColor: "#2E2E2E" }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-xs" style={{ color: "#9AA4B2" }}>
-                      Avg Value Delta
-                    </p>
-                    <p className="font-mono text-2xl font-bold" style={{ color: "#00FF85" }}>
-                      +{(proposals.reduce((sum, p) => sum + p.valueDifferential, 0) / proposals.length).toFixed(1)}
-                    </p>
-                  </div>
-                  <Target className="h-8 w-8" style={{ color: "#00FF85" }} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card style={{ background: "#121417", borderColor: "#2E2E2E" }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-xs" style={{ color: "#9AA4B2" }}>
-                      Positive Trades
-                    </p>
-                    <p className="font-mono text-2xl font-bold" style={{ color: "#00FF85" }}>
-                      {proposals.filter((p) => p.valueDifferential > 0).length}/{proposals.length}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-8 w-8" style={{ color: "#00FF85" }} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Proposals List */}
-            <div className="lg:col-span-2 space-y-6">
-              {proposals.map((proposal) => (
-                <Card
-                  key={proposal.id}
-                  style={{
-                    background: "#121417",
-                    borderColor: sentTrades.has(proposal.id) ? "rgba(46,46,46,0.7)" : "#2E2E2E",
-                  }}
-                  className={`cursor-pointer transition-all ${sentTrades.has(proposal.id) ? "opacity-70" : ""}`}
-                  onClick={() => setSelectedProposal(proposal)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Target className="h-5 w-5" style={{ color: "#00FF85" }} />
-                        <CardTitle className="font-mono" style={{ color: "#D1D5DB" }}>
-                          {proposal.partner}
-                        </CardTitle>
-                        {sentTrades.has(proposal.id) ? (
-                          <Badge
-                            className="font-mono text-[10px]"
-                            style={{
-                              background: "rgba(0,255,133,0.12)",
-                              color: "#00FF85",
-                              borderColor: "rgba(0,255,133,0.22)",
-                            }}
-                          >
-                            <Check className="mr-1 h-3 w-3" />
-                            Sent
-                          </Badge>
-                        ) : (
-                          <Badge
-                            className="font-mono text-[10px]"
-                            style={{
-                              background:
-                                proposal.valueDifferential > 0 ? "rgba(0,255,133,0.12)" : "rgba(255,59,48,0.12)",
-                              color: proposal.valueDifferential > 0 ? "#00FF85" : "#FF3B30",
-                              borderColor:
-                                proposal.valueDifferential > 0 ? "rgba(0,255,133,0.22)" : "rgba(255,59,48,0.22)",
-                            }}
-                          >
-                            {proposal.valueDifferential > 0 ? "+" : ""}
-                            {proposal.valueDifferential.toFixed(1)} Value
-                          </Badge>
-                        )}
-                      </div>
-                      <Collapsible open={expandedProposal === proposal.id}>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setExpandedProposal(expandedProposal === proposal.id ? null : proposal.id)
-                            }}
-                            className="font-mono text-[11px]"
-                            style={{ color: "#9AA4B2" }}
-                          >
-                            {expandedProposal === proposal.id ? "Collapse" : "Expand"}
-                            <ChevronDown
-                              className={`ml-2 h-4 w-4 transition-transform ${expandedProposal === proposal.id ? "rotate-180" : ""}`}
-                            />
-                          </Button>
-                        </CollapsibleTrigger>
-                      </Collapsible>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Value Differential */}
-                    <div className="text-center font-mono">
-                      <div className="text-[11px] mb-1" style={{ color: "#9AA4B2" }}>
-                        Value Differential
-                      </div>
-                      <div
-                        className="font-bold text-3xl"
-                        style={{ color: proposal.valueDifferential > 0 ? "#00FF85" : "#FF3B30" }}
-                      >
-                        {proposal.valueDifferential > 0 ? "+" : ""}
-                        {proposal.valueDifferential.toFixed(1)}
-                      </div>
-                      <div className="text-[11px]" style={{ color: "#9AA4B2" }}>
-                        Fantasy Points
-                      </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="font-mono text-[11px]" style={{ color: "#9AA4B2" }}>
-                            You Trade:
-                          </p>
-                          <p className="font-mono text-[11px]" style={{ color: "#FF3B30" }}>
-                            -{calculateTotalValue(proposal.yourPlayers).toFixed(1)} pts
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          {proposal.yourPlayers.map((player, index) => (
-                            <div
-                              key={index}
-                              className="font-mono text-sm px-3 py-2 rounded-[2px] border flex items-center justify-between"
-                              style={{ color: "#D1D5DB", background: "#0E0F11", borderColor: "#2E2E2E" }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <span className="font-semibold">{player.name}</span>
-                                  <Badge
-                                    variant="outline"
-                                    className="ml-2 font-mono text-[10px]"
-                                    style={getPositionStyle(player.position)}
-                                  >
-                                    {player.position}
-                                  </Badge>
-                                </div>
-                                {getTrendIcon(player.trend)}
-                              </div>
-                              <div className="text-[11px]" style={{ color: "#9AA4B2" }}>
-                                {player.value.toFixed(1)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="font-mono text-[11px]" style={{ color: "#9AA4B2" }}>
-                            You Receive:
-                          </p>
-                          <p className="font-mono text-[11px]" style={{ color: "#00FF85" }}>
-                            +{calculateTotalValue(proposal.theirPlayers).toFixed(1)} pts
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          {proposal.theirPlayers.map((player, index) => (
-                            <div
-                              key={index}
-                              className="font-mono text-sm px-3 py-2 rounded-[2px] border flex items-center justify-between"
-                              style={{
-                                color: "#00FF85",
-                                background: "rgba(0,255,133,0.06)",
-                                borderColor: "rgba(0,255,133,0.22)",
-                              }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <span className="font-semibold">{player.name}</span>
-                                  <Badge
-                                    variant="outline"
-                                    className="ml-2 font-mono text-[10px]"
-                                    style={getPositionStyle(player.position)}
-                                  >
-                                    {player.position}
-                                  </Badge>
-                                </div>
-                                {getTrendIcon(player.trend)}
-                              </div>
-                              <div className="text-[11px]" style={{ color: "#9AA4B2" }}>
-                                {player.value.toFixed(1)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Reasoning */}
-                    <div className="rounded-[2px] p-4" style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}>
-                      <p className="font-mono text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                        Trade Logic
-                      </p>
-                      <p className="font-mono text-sm" style={{ color: "#D1D5DB" }}>
-                        {proposal.reasoning}
-                      </p>
-                    </div>
-
-                    {/* Expanded Details */}
-                    <Collapsible open={expandedProposal === proposal.id}>
-                      <CollapsibleContent className="space-y-4">
-                        <div
-                          className="rounded-[2px] p-4"
-                          style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-mono text-[11px]" style={{ color: "#9AA4B2" }}>
-                              Trade Message
-                            </p>
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                copyMessage(proposal.message, proposal.id)
-                              }}
-                              size="sm"
-                              variant="ghost"
-                              className="font-mono text-[11px] h-auto p-1"
-                              style={{ color: "#00FF85" }}
-                            >
-                              <Copy className="mr-1 h-3 w-3" />
-                              {copiedMessage === proposal.id ? "Copied!" : "Copy"}
-                            </Button>
-                          </div>
-                          <p className="font-mono text-sm leading-relaxed" style={{ color: "#D1D5DB" }}>
-                            {proposal.message}
-                          </p>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-2">
-                      {sentTrades.has(proposal.id) ? (
-                        <Button
-                          disabled
-                          className="flex-1 font-mono font-semibold"
-                          style={{ background: "rgba(0,255,133,0.18)", color: "#00FF85" }}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          Trade Sent
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSendTrade(proposal.id)
-                            }}
-                            disabled={sendingTrade === proposal.id}
-                            className="flex-1 font-mono font-semibold"
-                            style={{ background: "#00FF85", color: "#000" }}
-                          >
-                            {sendingTrade === proposal.id ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="mr-2 h-4 w-4" />
-                                Send Trade
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleModifyTrade(proposal)
-                            }}
-                            variant="outline"
-                            className="font-mono"
-                            style={{ borderColor: "#2E2E2E", color: "#D1D5DB", background: "transparent" }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modify
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              ) : (
+                inboxProposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={true} />)
+              )}
             </div>
+          </TabsContent>
 
-            {/* Intelligence Panel */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-8">
-                <Card style={{ background: "#121417", borderColor: "#2E2E2E" }}>
-                  <CardHeader>
-                    <CardTitle className="font-mono uppercase text-sm" style={{ color: "#00FF85" }}>
-                      Trade Intelligence
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedProposal ? (
-                      <div className="space-y-4">
-                        <div
-                          className="rounded-[2px] p-4"
-                          style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}
-                        >
-                          <p className="font-mono text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                            Why It Works
-                          </p>
-                          <p className="font-mono text-sm" style={{ color: "#D1D5DB" }}>
-                            {selectedProposal.context.whyItWorks}
-                          </p>
-                        </div>
-                        <div
-                          className="rounded-[2px] p-4"
-                          style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}
-                        >
-                          <p className="font-mono text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                            Timing Advice
-                          </p>
-                          <p className="font-mono text-sm mb-1" style={{ color: "#00FF85" }}>
-                            {selectedProposal.context.timingAdvice.bestTiming}
-                          </p>
-                          <p className="font-mono text-[11px]" style={{ color: "#D1D5DB" }}>
-                            {selectedProposal.context.timingAdvice.reasoning}
-                          </p>
-                        </div>
-                        {selectedProposal.context.negotiationBackup && (
-                          <div
-                            className="rounded-[2px] p-4"
-                            style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}
-                          >
-                            <p className="font-mono text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                              Negotiation Backup
-                            </p>
-                            <p className="font-mono text-sm" style={{ color: "#D1D5DB" }}>
-                              {selectedProposal.context.negotiationBackup}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="font-mono text-sm" style={{ color: "#9AA4B2" }}>
-                          Select a proposal to view details
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+          <TabsContent value="outbox" className="mt-6">
+            <div className="space-y-4">
+              {outboxProposals.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No proposals in your outbox</p>
+                </div>
+              ) : (
+                outboxProposals.map((proposal) => (
+                  <ProposalCard key={proposal.id} proposal={proposal} isInbox={false} />
+                ))
+              )}
             </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Modify Dialog */}
-      <Dialog open={modifyDialogOpen} onOpenChange={setModifyDialogOpen}>
-        <DialogContent
-          className="max-w-2xl"
-          style={{ background: "#121417", borderColor: "#2E2E2E", color: "#E5E7EB" }}
-        >
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-mono uppercase text-sm" style={{ color: "#00FF85" }}>
-              Modify Trade: {modifyingProposal?.partner}
-            </DialogTitle>
+            <DialogTitle>Proposal Details</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-6">
-            {modifyingProposal && (
-              <div className="rounded-[2px] p-4" style={{ background: "#0E0F11", border: "1px solid #2E2E2E" }}>
-                <div className="grid grid-cols-2 gap-4 font-mono text-sm">
-                  <div>
-                    <p className="text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                      You Trade
-                    </p>
-                    {modifyingProposal.yourPlayers.map((player, index) => (
-                      <div key={index} className="flex items-center gap-2" style={{ color: "#D1D5DB" }}>
-                        <span>{player.name}</span>
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-[10px]"
-                          style={getPositionStyle(player.position)}
-                        >
-                          {player.position}
-                        </Badge>
+          {selectedProposal && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">You Give</h4>
+                  <div className="space-y-2">
+                    {selectedProposal.give.map((player) => (
+                      <div key={player.id} className="flex items-center justify-between p-2 border rounded">
+                        <div>
+                          <span className="font-medium">{player.name}</span>
+                          <Badge variant="outline" className="ml-2">
+                            {player.position}
+                          </Badge>
+                        </div>
+                        {player.value && <span className="font-mono text-sm">{player.value}</span>}
                       </div>
                     ))}
                   </div>
-                  <div>
-                    <p className="text-[11px] mb-2" style={{ color: "#9AA4B2" }}>
-                      You Receive
-                    </p>
-                    {modifyingProposal.theirPlayers.map((player, index) => (
-                      <div key={index} className="flex items-center gap-2" style={{ color: "#00FF85" }}>
-                        <span>{player.name}</span>
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-[10px]"
-                          style={getPositionStyle(player.position)}
-                        >
-                          {player.position}
-                        </Badge>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">You Get</h4>
+                  <div className="space-y-2">
+                    {selectedProposal.get.map((player) => (
+                      <div key={player.id} className="flex items-center justify-between p-2 border rounded">
+                        <div>
+                          <span className="font-medium">{player.name}</span>
+                          <Badge variant="outline" className="ml-2">
+                            {player.position}
+                          </Badge>
+                        </div>
+                        {player.value && <span className="font-mono text-sm">{player.value}</span>}
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label className="font-mono text-xs" style={{ color: "#9AA4B2" }}>
-                Custom Message
-              </Label>
-              <Textarea
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value)}
-                className="min-h-[120px] resize-none font-mono text-sm"
-                style={{ background: "#0E0F11", borderColor: "#2E2E2E", color: "#E5E7EB" }}
-                placeholder="Customize your trade message..."
-                maxLength={500}
-              />
-              <p className="font-mono text-[11px]" style={{ color: "#9AA4B2" }}>
-                {customMessage.length}/500 characters
-              </p>
-            </div>
+              {selectedProposal.message && (
+                <div>
+                  <h4 className="font-medium mb-2">Message</h4>
+                  <p className="text-sm text-muted-foreground p-3 bg-muted rounded">{selectedProposal.message}</p>
+                </div>
+              )}
 
-            <div className="flex gap-3">
-              <Button
-                onClick={handleSaveModification}
-                className="flex-1 font-mono font-semibold"
-                style={{ background: "#00FF85", color: "#000" }}
-              >
-                Save Changes
-              </Button>
-              <Button
-                onClick={() => setModifyDialogOpen(false)}
-                variant="outline"
-                className="font-mono"
-                style={{ borderColor: "#2E2E2E", color: "#D1D5DB", background: "transparent" }}
-              >
-                Cancel
-              </Button>
+              <div className="flex justify-end">
+                <Button onClick={() => handleCounter(selectedProposal.id)}>Counter in Builder</Button>
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

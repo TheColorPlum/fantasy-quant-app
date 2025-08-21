@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -14,6 +14,8 @@ import { AlertCircle, Search } from "lucide-react"
 import { useSandboxStore, type SandboxPlayer } from "@/lib/sandbox-store"
 import { calcAggressiveness, validateTrade } from "@/lib/trade-engine"
 import { useToast } from "@/hooks/use-toast"
+import { useSearchParams } from "next/navigation"
+import { useProposalsStore } from "@/lib/proposals-store"
 
 const mockTeams = [
   { id: "team1", name: "The Destroyers", owner: "Mike Johnson" },
@@ -57,14 +59,32 @@ function posColor(pos: SandboxPlayer["position"]) {
 }
 
 export default function TradesPage() {
+  const searchParams = useSearchParams()
+  const { proposals } = useProposalsStore()
+  const counterId = searchParams.get("counter")
+
   const { give, get, message, partnerTeamId, addGive, addGet, remove, setMessage, setPartnerTeamId, reset } =
     useSandboxStore()
+
   const [selectedTeam, setSelectedTeam] = useState("team2")
   const [yourRosterSearch, setYourRosterSearch] = useState("")
   const [partnerRosterSearch, setPartnerRosterSearch] = useState("")
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (counterId) {
+      const originalProposal = proposals.find((p) => p.id === counterId)
+      if (originalProposal) {
+        reset()
+        originalProposal.get.forEach((player) => addGive(player))
+        originalProposal.give.forEach((player) => addGet(player))
+        setPartnerTeamId(originalProposal.fromTeamId)
+        setMessage(`Re: your proposal - here's my counter offer...`)
+      }
+    }
+  }, [counterId, proposals, reset, addGive, addGet, setPartnerTeamId, setMessage])
 
   const aggressiveness = calcAggressiveness(give, get)
   const validation = validateTrade(give, get)
@@ -84,7 +104,6 @@ export default function TradesPage() {
   )
 
   const handleSaveDraft = () => {
-    // Draft is automatically saved via zustand persistence
     toast({
       title: "Draft Saved",
       description: "Your trade draft has been saved locally.",
