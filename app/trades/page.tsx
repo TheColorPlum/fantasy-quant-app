@@ -1,6 +1,11 @@
 "use client"
-
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useProposalsStore } from "@/lib/proposals-store"
+import { useSandboxStore } from "@/lib/sandbox-store" // already exists
+import { useToast } from "@/components/ui/use-toast"
+import { calcAggressiveness, validateTrade } from "@/lib/trade-utils"
+import type { SandboxPlayer } from "@/types/sandbox-player"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -11,11 +16,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { AlertCircle, Search } from "lucide-react"
-import { useSandboxStore, type SandboxPlayer } from "@/lib/sandbox-store"
-import { calcAggressiveness, validateTrade } from "@/lib/trade-engine"
-import { useToast } from "@/hooks/use-toast"
-import { useSearchParams } from "next/navigation"
-import { useProposalsStore } from "@/lib/proposals-store"
 
 const mockTeams = [
   { id: "team1", name: "The Destroyers", owner: "Mike Johnson" },
@@ -59,32 +59,26 @@ function posColor(pos: SandboxPlayer["position"]) {
 }
 
 export default function TradesPage() {
-  const searchParams = useSearchParams()
-  const { proposals } = useProposalsStore()
-  const counterId = searchParams.get("counter")
+  const params = useSearchParams()
+  const counterId = params.get("counter")
 
-  const { give, get, message, partnerTeamId, addGive, addGet, remove, setMessage, setPartnerTeamId, reset } =
-    useSandboxStore()
+  const getById = useProposalsStore((s) => s.getById)
+
+  // sandbox actions
+  const reset = useSandboxStore((s) => s.reset)
+  const addGive = useSandboxStore((s) => s.addGive)
+  const addGet = useSandboxStore((s) => s.addGet)
+  const remove = useSandboxStore((s) => s.remove)
 
   const [selectedTeam, setSelectedTeam] = useState("team2")
   const [yourRosterSearch, setYourRosterSearch] = useState("")
   const [partnerRosterSearch, setPartnerRosterSearch] = useState("")
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [give, setGive] = useState<SandboxPlayer[]>([])
+  const [get, setGet] = useState<SandboxPlayer[]>([])
+  const [message, setMessage] = useState("")
   const { toast } = useToast()
-
-  useEffect(() => {
-    if (counterId) {
-      const originalProposal = proposals.find((p) => p.id === counterId)
-      if (originalProposal) {
-        reset()
-        originalProposal.get.forEach((player) => addGive(player))
-        originalProposal.give.forEach((player) => addGet(player))
-        setPartnerTeamId(originalProposal.fromTeamId)
-        setMessage(`Re: your proposal - here's my counter offer...`)
-      }
-    }
-  }, [counterId, proposals, reset, addGive, addGet, setPartnerTeamId, setMessage])
 
   const aggressiveness = calcAggressiveness(give, get)
   const validation = validateTrade(give, get)
@@ -102,6 +96,22 @@ export default function TradesPage() {
       !give.some((gp) => gp.id === p.id) &&
       !get.some((gp) => gp.id === p.id),
   )
+
+  useEffect(() => {
+    if (!counterId) return
+    const p = getById(counterId)
+    if (!p) return
+
+    // Prefill: reverse sides for counter (they offered you X for Y)
+    reset()
+    setGive(
+      p.theirPlayers.map((pl) => ({ id: pl.id, name: pl.name, position: pl.position, nflTeam: "", value: pl.value })),
+    )
+    setGet(
+      p.yourPlayers.map((pl) => ({ id: pl.id, name: pl.name, position: pl.position, nflTeam: "", value: pl.value })),
+    )
+    // optional: focus compose textarea or scroll to sandbox
+  }, [counterId, getById, reset])
 
   const handleSaveDraft = () => {
     toast({

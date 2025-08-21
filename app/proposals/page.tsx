@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,42 +10,79 @@ import { Plus, Eye } from "lucide-react"
 import { useProposalsStore, type Proposal } from "@/lib/proposals-store"
 import { useRouter } from "next/navigation"
 
+const VIEWER_TEAM_ID = "team1"
+
+const TEAM_NAMES: Record<string, string> = {
+  team1: "Your Team",
+  team2: "Fantasy Kings",
+  team3: "Gridiron Heroes",
+}
+
 export default function ProposalsPage() {
   const router = useRouter()
-  const { proposals, accept, decline, counter, getInboxProposals, getOutboxProposals } = useProposalsStore()
+
+  // 1) Trigger rehydrate after first client render
+  useEffect(() => {
+    useProposalsStore.persist.rehydrate()
+  }, [])
+
+  // 2) Hydration flag
+  const hydrated = useProposalsStore((s) => s._hydrated)
+
+  // 3) Stable snapshot before hydration (EMPTY never changes)
+  const EMPTY: Proposal[] = []
+  const proposals = useProposalsStore((s) => (s._hydrated ? s.proposals : EMPTY))
+
+  // 4) Actions
+  const accept = useProposalsStore((s) => s.accept)
+  const decline = useProposalsStore((s) => s.decline)
+  const send = useProposalsStore((s) => s.send)
+
+  // 5) Derive inbox/outbox when proposals changes
+  const [inbox, setInbox] = useState<Proposal[]>([])
+  const [outbox, setOutbox] = useState<Proposal[]>([])
+
+  const sortByCreatedDesc = useCallback((a: Proposal, b: Proposal) => b.createdAt.localeCompare(a.createdAt), [])
+
+  useEffect(() => {
+    const inb = proposals
+      .filter((p) => p.toTeamId === VIEWER_TEAM_ID)
+      .slice()
+      .sort(sortByCreatedDesc)
+    const outb = proposals
+      .filter((p) => p.fromTeamId === VIEWER_TEAM_ID)
+      .slice()
+      .sort(sortByCreatedDesc)
+    setInbox(inb)
+    setOutbox(outb)
+  }, [proposals, sortByCreatedDesc])
+
+  // 6) Your existing local UI state & handlers (unchanged except wiring)
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
 
-  const currentTeamId = "team1"
+  const copyMessage = useCallback((message: string, id: string) => {
+    if (!message) return
+    navigator.clipboard.writeText(message)
+    setCopiedMessage(id)
+    setTimeout(() => setCopiedMessage(null), 2000)
+  }, [])
 
-  const inboxProposals = getInboxProposals(currentTeamId)
-  const outboxProposals = getOutboxProposals(currentTeamId)
+  const onAccept = useCallback((id: string) => accept(id), [accept])
+  const onDecline = useCallback((id: string) => decline(id), [decline])
+  const onSend = useCallback((id: string) => send(id), [send])
+  const onCounter = useCallback(
+    (proposalId: string) => {
+      router.push(`/trades?counter=${proposalId}`)
+    },
+    [router],
+  )
 
-  const copyMessage = (message: string, proposalId: string) => {
-    if (message) {
-      navigator.clipboard.writeText(message)
-      setCopiedMessage(proposalId)
-      setTimeout(() => setCopiedMessage(null), 2000)
-    }
-  }
-
-  const handleAccept = (id: string) => {
-    accept(id)
-  }
-
-  const handleDecline = (id: string) => {
-    decline(id)
-  }
-
-  const handleCounter = (id: string) => {
-    router.push(`/trades?counter=${id}`)
-  }
-
-  const openDetail = (proposal: Proposal) => {
-    setSelectedProposal(proposal)
+  const openDetail = useCallback((p: Proposal) => {
+    setSelectedProposal(p)
     setDetailDialogOpen(true)
-  }
+  }, [])
 
   const getStatusColor = (status: Proposal["status"]) => {
     switch (status) {
@@ -65,14 +102,8 @@ export default function ProposalsPage() {
   }
 
   const getPartnerName = (proposal: Proposal, isInbox: boolean) => {
-    const teamNames: Record<string, string> = {
-      team1: "Your Team",
-      team2: "Fantasy Kings",
-      team3: "Gridiron Heroes",
-    }
-
     const partnerId = isInbox ? proposal.fromTeamId : proposal.toTeamId
-    return teamNames[partnerId] || "Unknown Team"
+    return TEAM_NAMES[partnerId] || proposal.partner || "Unknown Team"
   }
 
   const ProposalCard = ({ proposal, isInbox }: { proposal: Proposal; isInbox: boolean }) => (
@@ -146,18 +177,18 @@ export default function ProposalsPage() {
           </Button>
           {isInbox && proposal.status === "sent" ? (
             <>
-              <Button size="sm" className="rounded-md" onClick={() => handleAccept(proposal.id)}>
+              <Button size="sm" className="rounded-md" onClick={() => onAccept(proposal.id)}>
                 Accept
               </Button>
-              <Button variant="secondary" size="sm" className="rounded-md" onClick={() => handleCounter(proposal.id)}>
+              <Button variant="secondary" size="sm" className="rounded-md" onClick={() => onCounter(proposal.id)}>
                 Counter
               </Button>
-              <Button variant="destructive" size="sm" className="rounded-md" onClick={() => handleDecline(proposal.id)}>
+              <Button variant="destructive" size="sm" className="rounded-md" onClick={() => onDecline(proposal.id)}>
                 Decline
               </Button>
             </>
           ) : (
-            <Button variant="secondary" size="sm" className="rounded-md" onClick={() => handleCounter(proposal.id)}>
+            <Button variant="secondary" size="sm" className="rounded-md" onClick={() => onCounter(proposal.id)}>
               Edit/Counter
             </Button>
           )}
@@ -192,33 +223,36 @@ export default function ProposalsPage() {
 
           <TabsContent value="inbox" className="mt-6">
             <div className="space-y-4">
-              {inboxProposals.length === 0 ? (
+              {inbox.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">No proposals in your inbox</p>
                 </div>
               ) : (
-                inboxProposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={true} />)
+                inbox.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={true} />)
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="outbox" className="mt-6">
             <div className="space-y-4">
-              {outboxProposals.length === 0 ? (
+              {outbox.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">No proposals in your outbox</p>
                 </div>
               ) : (
-                outboxProposals.map((proposal) => (
-                  <ProposalCard key={proposal.id} proposal={proposal} isInbox={false} />
-                ))
+                outbox.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={false} />)
               )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+      <Dialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          if (open !== detailDialogOpen) setDetailDialogOpen(open)
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Proposal Details</DialogTitle>
@@ -268,7 +302,7 @@ export default function ProposalsPage() {
               )}
 
               <div className="flex justify-end">
-                <Button onClick={() => handleCounter(selectedProposal.id)}>Counter in Builder</Button>
+                <Button onClick={() => onCounter(selectedProposal.id)}>Counter in Builder</Button>
               </div>
             </div>
           )}
