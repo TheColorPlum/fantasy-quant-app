@@ -9,7 +9,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <main className="min-h-screen bg-background text-foreground">
+          <ClientLayout>{children}</ClientLayout>
+        </main>
       </body>
     </html>
   )

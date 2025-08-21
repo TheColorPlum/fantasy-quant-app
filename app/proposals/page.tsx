@@ -112,8 +112,8 @@ export default function ProposalsPage() {
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Trade Proposals</h1>
-              <p className="text-sm text-muted-foreground">Manage incoming and outgoing trade proposals</p>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Proposals</h1>
+              <p className="text-sm text-muted-foreground">Inbox & Outbox</p>
             </div>
             <Button onClick={() => router.push("/trades")} className="gap-2">
               <Plus className="h-4 w-4" />

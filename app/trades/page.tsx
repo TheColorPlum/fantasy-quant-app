@@ -197,10 +197,8 @@ export default function TradesPage() {
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Propose Trade</h1>
-              <p className="text-sm text-muted-foreground">
-                Build a trade using your roster and targets. Save as draft or send.
-              </p>
+              <h1 className="text-xl font-semibold tracking-tight">Propose Trade</h1>
+              <p className="text-sm text-muted-foreground">Build a trade using your roster and targets</p>
             </div>
           </div>
         </div>
