@@ -17,8 +17,8 @@ export interface Proposal {
   fromTeamId: string
   toTeamId: string
   partner: string // display name used by the UI
-  yourPlayers: PlayerRef[] // “You Give” (viewer perspective)
-  theirPlayers: PlayerRef[] // “You Get”
+  yourPlayers: PlayerRef[] // "You Give" (viewer perspective)
+  theirPlayers: PlayerRef[] // "You Get"
   valueDifferential: number
   confidence: number // %
   reasoning?: string
