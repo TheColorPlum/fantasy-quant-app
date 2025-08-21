@@ -29,6 +29,19 @@ export default function TradesPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#0f0f0f", color: "#B0B6C0" }}>
+      <div className="border-b border-border bg-background/60 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Propose Trade</h1>
+              <p className="text-sm text-muted-foreground">
+                Build a trade using your roster and targets. Save as draft or send.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
           <div className="flex items-center justify-between mb-3">

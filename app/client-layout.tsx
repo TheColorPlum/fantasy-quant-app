@@ -22,7 +22,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
       {!hideHeader && <Header />}
       {!hideHeader && <GlobalTicker />}
-      <main className={`${inter.className} mx-auto max-w-[1280px] px-4`}>{children}</main>
+      <div className="mx-auto max-w-[1280px] px-4">
+        <main className={inter.className}>{children}</main>
+      </div>
       <Toaster />
     </ThemeProvider>
   )

@@ -8,7 +8,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TrendingUp, ChevronDown, Copy, Target, BarChart3, TrendingDown, Edit, Send, Check, Plus } from "lucide-react"
 
 interface TradeProposal {
   id: string
@@ -52,6 +53,7 @@ export default function ProposalsPage() {
   const [customMessage, setCustomMessage] = useState("")
   const [sentTrades, setSentTrades] = useState<Set<string>>(new Set())
   const [sendingTrade, setSendingTrade] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("inbox")
 
   const proposals: TradeProposal[] = [
     {
@@ -164,21 +166,35 @@ export default function ProposalsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#0E0F11", color: "#E5E7EB" }}>
+      <div className="border-b border-border bg-background/60 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Proposals</h1>
+              <p className="text-sm text-muted-foreground">Review and respond to trade proposals (Inbox & Outbox)</p>
+            </div>
+            <Button className="rounded-[2px]" style={{ background: "#00FF85", color: "#000" }}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Proposal
+            </Button>
+          </div>
+          <div className="mt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+                <TabsTrigger value="inbox" className="text-xs">
+                  Inbox
+                </TabsTrigger>
+                <TabsTrigger value="outbox" className="text-xs">
+                  Outbox
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+
       <div className="py-8">
         <div className="max-w-[1280px] mx-auto">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="font-mono text-2xl font-bold uppercase" style={{ color: "#00FF85" }}>
-              Trade Proposals
-            </h1>
-            <p className="font-mono text-xs" style={{ color: "#9AA4B2" }}>
-              Proposals:{" "}
-              <span className="font-semibold" style={{ color: "#00FF85" }}>
-                {proposals.length}
-              </span>
-            </p>
-          </div>
-
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card style={{ background: "#121417", borderColor: "#2E2E2E" }}>
