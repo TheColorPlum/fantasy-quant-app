@@ -12,9 +12,9 @@ function getPageBadge(pathname: string) {
     case "/dashboard":
       return "DASHBOARD"
     case "/trades":
-      return "FIND_TRADES"
+      return "PROPOSE_TRADE"
     case "/proposals":
-      return "MY_PROPOSALS"
+      return "PROPOSALS"
     case "/rosters":
       return "VIEW_ROSTERS"
     case "/players":
@@ -30,7 +30,7 @@ function getPageBadge(pathname: string) {
 
 const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Trades", href: "/trades" },
+  { label: "Propose Trade", href: "/trades" },
   { label: "Players", href: "/players" },
   { label: "Rosters", href: "/rosters" },
   { label: "Proposals", href: "/proposals" },
