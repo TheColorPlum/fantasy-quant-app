@@ -1,5 +1,6 @@
 // Advanced trade analysis engine
 import type { Player } from "./database"
+import type { SandboxPlayer } from "./sandbox" // Import SandboxPlayer type
 
 export interface TradeScenario {
   userGives: Player[]
@@ -9,6 +10,7 @@ export interface TradeScenario {
   reasoning: string
   riskLevel: "low" | "medium" | "high"
   timeframe: "immediate" | "short-term" | "long-term"
+  aggressiveness: number // Added aggressiveness field
 }
 
 export interface TradeMetrics {
@@ -38,12 +40,18 @@ export class TradeAnalysisEngine {
     metrics: TradeMetrics
     scenario: TradeScenario
     recommendations: string[]
+    validation: {
+      isValid: boolean
+      errors: string[]
+      warnings: string[]
+    }
   }> {
     const metrics = this.calculateTradeMetrics(userGives, userGets)
     const scenario = this.generateTradeScenario(userGives, userGets, partner, metrics)
     const recommendations = this.generateRecommendations(scenario, metrics)
+    const validation = validateTrade(userGives as SandboxPlayer[], userGets as SandboxPlayer[]) // Validate trade
 
-    return { metrics, scenario, recommendations }
+    return { metrics, scenario, recommendations, validation }
   }
 
   private calculateTradeMetrics(userGives: Player[], userGets: Player[]): TradeMetrics {
@@ -103,6 +111,7 @@ export class TradeAnalysisEngine {
     const confidence = this.calculateConfidence(metrics)
     const riskLevel = this.assessRiskLevel(metrics)
     const timeframe = this.determineTimeframe(userGives, userGets)
+    const aggressiveness = calcAggressiveness(userGives as SandboxPlayer[], userGets as SandboxPlayer[]) // Calculate aggressiveness
 
     const reasoning = this.generateReasoning(userGives, userGets, metrics)
 
@@ -114,6 +123,7 @@ export class TradeAnalysisEngine {
       reasoning,
       riskLevel,
       timeframe,
+      aggressiveness,
     }
   }
 
@@ -239,5 +249,76 @@ export class TradeAnalysisEngine {
     }
 
     return recommendations
+  }
+}
+
+export function calcAggressiveness(give: SandboxPlayer[], get: SandboxPlayer[]): number {
+  if (give.length === 0 && get.length === 0) return 0
+
+  const giveValue = give.reduce((sum, p) => sum + p.value, 0)
+  const getValue = get.reduce((sum, p) => sum + p.value, 0)
+
+  // Calculate value at risk as percentage of total value being traded
+  const totalValue = giveValue + getValue
+  if (totalValue === 0) return 0
+
+  // Aggressiveness based on value differential and total value at risk
+  const valueDiff = Math.abs(getValue - giveValue)
+  const riskFactor = Math.min(totalValue / 100, 1) // Normalize to 0-1 based on total value
+  const diffFactor = Math.min(valueDiff / 20, 1) // Normalize value difference
+
+  return Math.min(riskFactor * 0.6 + diffFactor * 0.4, 1)
+}
+
+export function validateTrade(
+  give: SandboxPlayer[],
+  get: SandboxPlayer[],
+): {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+} {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  // Check if trade has players on both sides
+  if (give.length === 0 || get.length === 0) {
+    errors.push("Add at least one player to Give and Get to continue.")
+  }
+
+  // Check position balance warnings
+  const givePositions = give.reduce(
+    (acc, p) => {
+      acc[p.position] = (acc[p.position] || 0) + 1
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  const getPositions = get.reduce(
+    (acc, p) => {
+      acc[p.position] = (acc[p.position] || 0) + 1
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  // Check for position imbalances
+  Object.keys(givePositions).forEach((pos) => {
+    const giving = givePositions[pos] || 0
+    const getting = getPositions[pos] || 0
+
+    if (giving > getting && pos === "TE") {
+      warnings.push("You're trading away your only TE. Consider adding a replacement.")
+    }
+    if (giving > getting && pos === "QB") {
+      warnings.push("You're trading away QB depth. Consider roster implications.")
+    }
+  })
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
   }
 }
