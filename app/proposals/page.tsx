@@ -106,97 +106,6 @@ export default function ProposalsPage() {
     return TEAM_NAMES[partnerId] || proposal.partner || "Unknown Team"
   }
 
-  const ProposalCard = ({ proposal, isInbox }: { proposal: Proposal; isInbox: boolean }) => (
-    <Card className="bg-card border-border">
-      <CardHeader className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{isInbox ? "From" : "To"}</span>
-            <span className="font-medium">{getPartnerName(proposal, isInbox)}</span>
-            <Badge variant="outline" className={`rounded-md ${getStatusColor(proposal.status)}`}>
-              {proposal.status}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Value Differential</p>
-              <p className={`font-mono ${proposal.valueDifferential >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                {proposal.valueDifferential >= 0 ? "+" : ""}
-                {proposal.valueDifferential.toFixed(1)}
-              </p>
-            </div>
-            <div className="hidden md:block text-right">
-              <p className="text-xs text-muted-foreground">Confidence</p>
-              <p className="font-mono">{proposal.confidence}%</p>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">You Give</p>
-            <div className="flex flex-wrap gap-2">
-              {proposal.give.map((p) => (
-                <Badge key={p.id} className="rounded-md" variant="secondary">
-                  {p.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">You Get</p>
-            <div className="flex flex-wrap gap-2">
-              {proposal.get.map((p) => (
-                <Badge key={p.id} className="rounded-md" variant="secondary">
-                  {p.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          {proposal.message && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-md bg-transparent"
-              onClick={() => copyMessage(proposal.message!, proposal.id)}
-            >
-              {copiedMessage === proposal.id ? "Copied!" : "Copy"}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-md bg-transparent"
-            onClick={() => openDetail(proposal)}
-          >
-            <Eye className="mr-1 h-3 w-3" />
-            Details
-          </Button>
-          {isInbox && proposal.status === "sent" ? (
-            <>
-              <Button size="sm" className="rounded-md" onClick={() => onAccept(proposal.id)}>
-                Accept
-              </Button>
-              <Button variant="secondary" size="sm" className="rounded-md" onClick={() => onCounter(proposal.id)}>
-                Counter
-              </Button>
-              <Button variant="destructive" size="sm" className="rounded-md" onClick={() => onDecline(proposal.id)}>
-                Decline
-              </Button>
-            </>
-          ) : (
-            <Button variant="secondary" size="sm" className="rounded-md" onClick={() => onCounter(proposal.id)}>
-              Edit/Counter
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-background/60 backdrop-blur">
@@ -204,10 +113,10 @@ export default function ProposalsPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Proposals</h1>
-              <p className="text-sm text-muted-foreground">Review and respond to trade proposals (Inbox & Outbox)</p>
+              <p className="text-sm text-muted-foreground">Inbox & Outbox</p>
             </div>
-            <Button onClick={() => router.push("/trades")} className="rounded-md">
-              <Plus className="mr-2 h-4 w-4" />
+            <Button onClick={() => router.push("/trades")} className="gap-2">
+              <Plus className="h-4 w-4" />
               New Proposal
             </Button>
           </div>
@@ -217,36 +126,145 @@ export default function ProposalsPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <Tabs defaultValue="inbox" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="inbox">Inbox</TabsTrigger>
-            <TabsTrigger value="outbox">Outbox</TabsTrigger>
+            <TabsTrigger value="inbox">Inbox ({inbox.length})</TabsTrigger>
+            <TabsTrigger value="outbox">Outbox ({outbox.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="inbox" className="mt-6">
-            <div className="space-y-4">
-              {inbox.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No proposals in your inbox</p>
-                </div>
-              ) : (
-                inbox.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={true} />)
-              )}
-            </div>
+          <TabsContent value="inbox" className="space-y-4">
+            {inbox.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <p className="text-muted-foreground">No incoming proposals</p>
+                </CardContent>
+              </Card>
+            ) : (
+              inbox.map((proposal) => (
+                <Card key={proposal.id} className="bg-card border-border">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold">From: {getPartnerName(proposal, true)}</h3>
+                        <Badge className={getStatusColor(proposal.status)}>{proposal.status}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openDetail(proposal)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {proposal.status === "sent" && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => onCounter(proposal.id)}>
+                              Counter
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => onDecline(proposal.id)}>
+                              Decline
+                            </Button>
+                            <Button size="sm" onClick={() => onAccept(proposal.id)}>
+                              Accept
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-2">You Get</h4>
+                        <div className="space-y-1">
+                          {proposal.theirPlayers.map((player) => (
+                            <div key={player.id} className="text-sm">
+                              {player.name} ({player.position})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">You Give</h4>
+                        <div className="space-y-1">
+                          {proposal.yourPlayers.map((player) => (
+                            <div key={player.id} className="text-sm">
+                              {player.name} ({player.position})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {proposal.message && (
+                      <div className="mt-4 p-3 bg-muted rounded-md">
+                        <p className="text-sm">{proposal.message}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
-          <TabsContent value="outbox" className="mt-6">
-            <div className="space-y-4">
-              {outbox.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No proposals in your outbox</p>
-                </div>
-              ) : (
-                outbox.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} isInbox={false} />)
-              )}
-            </div>
+          <TabsContent value="outbox" className="space-y-4">
+            {outbox.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <p className="text-muted-foreground">No outgoing proposals</p>
+                </CardContent>
+              </Card>
+            ) : (
+              outbox.map((proposal) => (
+                <Card key={proposal.id} className="bg-card border-border">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold">To: {getPartnerName(proposal, false)}</h3>
+                        <Badge className={getStatusColor(proposal.status)}>{proposal.status}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openDetail(proposal)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {proposal.status === "draft" && (
+                          <Button size="sm" onClick={() => onSend(proposal.id)}>
+                            Send
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-2">You Give</h4>
+                        <div className="space-y-1">
+                          {proposal.yourPlayers.map((player) => (
+                            <div key={player.id} className="text-sm">
+                              {player.name} ({player.position})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">You Get</h4>
+                        <div className="space-y-1">
+                          {proposal.theirPlayers.map((player) => (
+                            <div key={player.id} className="text-sm">
+                              {player.name} ({player.position})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {proposal.message && (
+                      <div className="mt-4 p-3 bg-muted rounded-md">
+                        <p className="text-sm">{proposal.message}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
         </Tabs>
       </div>
 
+      {/* Detail Dialog */}
       <Dialog
         open={detailDialogOpen}
         onOpenChange={(open) => {
@@ -255,55 +273,63 @@ export default function ProposalsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Proposal Details</DialogTitle>
+            <DialogTitle>Trade Proposal Details</DialogTitle>
           </DialogHeader>
           {selectedProposal && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-medium mb-2">You Give</h4>
+                  <h4 className="font-medium mb-3">You Give</h4>
                   <div className="space-y-2">
-                    {selectedProposal.give.map((player) => (
-                      <div key={player.id} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <span className="font-medium">{player.name}</span>
-                          <Badge variant="outline" className="ml-2">
-                            {player.position}
-                          </Badge>
-                        </div>
-                        {player.value && <span className="font-mono text-sm">{player.value}</span>}
+                    {selectedProposal.yourPlayers.map((player) => (
+                      <div key={player.id} className="flex justify-between items-center p-2 border rounded">
+                        <span>
+                          {player.name} ({player.position})
+                        </span>
+                        <span className="font-mono text-sm">{player.value.toFixed(1)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">You Get</h4>
+                  <h4 className="font-medium mb-3">You Get</h4>
                   <div className="space-y-2">
-                    {selectedProposal.get.map((player) => (
-                      <div key={player.id} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <span className="font-medium">{player.name}</span>
-                          <Badge variant="outline" className="ml-2">
-                            {player.position}
-                          </Badge>
-                        </div>
-                        {player.value && <span className="font-mono text-sm">{player.value}</span>}
+                    {selectedProposal.theirPlayers.map((player) => (
+                      <div key={player.id} className="flex justify-between items-center p-2 border rounded">
+                        <span>
+                          {player.name} ({player.position})
+                        </span>
+                        <span className="font-mono text-sm">{player.value.toFixed(1)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <div className="flex justify-between text-sm pt-4 border-t">
+                <span>Value Difference:</span>
+                <span
+                  className={`font-mono ${selectedProposal.valueDifferential > 0 ? "text-green-600" : "text-red-600"}`}
+                >
+                  {selectedProposal.valueDifferential > 0 ? "+" : ""}
+                  {selectedProposal.valueDifferential.toFixed(1)}
+                </span>
               </div>
 
               {selectedProposal.message && (
-                <div>
+                <div className="p-3 bg-muted rounded-md">
                   <h4 className="font-medium mb-2">Message</h4>
-                  <p className="text-sm text-muted-foreground p-3 bg-muted rounded">{selectedProposal.message}</p>
+                  <p className="text-sm">{selectedProposal.message}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 bg-transparent"
+                    onClick={() => copyMessage(selectedProposal.message!, selectedProposal.id)}
+                  >
+                    {copiedMessage === selectedProposal.id ? "Copied!" : "Copy Message"}
+                  </Button>
                 </div>
               )}
-
-              <div className="flex justify-end">
-                <Button onClick={() => onCounter(selectedProposal.id)}>Counter in Builder</Button>
-              </div>
             </div>
           )}
         </DialogContent>

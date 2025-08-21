@@ -1,11 +1,6 @@
 "use client"
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import { useProposalsStore } from "@/lib/proposals-store"
-import { useSandboxStore } from "@/lib/sandbox-store" // already exists
-import { useToast } from "@/components/ui/use-toast"
-import { calcAggressiveness, validateTrade } from "@/lib/trade-utils"
-import type { SandboxPlayer } from "@/types/sandbox-player"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -16,6 +11,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { AlertCircle, Search } from "lucide-react"
+import { useSandboxStore, type SandboxPlayer } from "@/lib/sandbox-store"
+import { calcAggressiveness, validateTrade } from "@/lib/trade-engine"
+import { useToast } from "@/hooks/use-toast"
+import { useSearchParams } from "next/navigation"
+import { useProposalsStore, type PlayerRef } from "@/lib/proposals-store"
+
+const VIEWER_TEAM_ID = "team1"
 
 const mockTeams = [
   { id: "team1", name: "The Destroyers", owner: "Mike Johnson" },
@@ -58,27 +60,57 @@ function posColor(pos: SandboxPlayer["position"]) {
   }
 }
 
+function toPlayerRef(p: SandboxPlayer): PlayerRef {
+  return { id: p.id, name: p.name, position: p.position, value: p.value }
+}
+
 export default function TradesPage() {
-  const params = useSearchParams()
-  const counterId = params.get("counter")
+  const searchParams = useSearchParams()
+  const counterId = searchParams.get("counter")
 
   const getById = useProposalsStore((s) => s.getById)
+  const createDraft = useProposalsStore((s) => s.createDraft)
+  const send = useProposalsStore((s) => s.send)
 
-  // sandbox actions
-  const reset = useSandboxStore((s) => s.reset)
-  const addGive = useSandboxStore((s) => s.addGive)
-  const addGet = useSandboxStore((s) => s.addGet)
-  const remove = useSandboxStore((s) => s.remove)
+  const { give, get, message, partnerTeamId, addGive, addGet, remove, setMessage, setPartnerTeamId, reset } =
+    useSandboxStore()
 
   const [selectedTeam, setSelectedTeam] = useState("team2")
   const [yourRosterSearch, setYourRosterSearch] = useState("")
   const [partnerRosterSearch, setPartnerRosterSearch] = useState("")
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [give, setGive] = useState<SandboxPlayer[]>([])
-  const [get, setGet] = useState<SandboxPlayer[]>([])
-  const [message, setMessage] = useState("")
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (!counterId) return
+    const p = getById(counterId)
+    if (!p) return
+
+    // Prefill: reverse sides for counter (they offered you X for Y)
+    reset()
+    p.theirPlayers.forEach((pl) =>
+      addGive({
+        id: pl.id,
+        name: pl.name,
+        position: pl.position,
+        nflTeam: "",
+        value: pl.value,
+      }),
+    )
+    p.yourPlayers.forEach((pl) =>
+      addGet({
+        id: pl.id,
+        name: pl.name,
+        position: pl.position,
+        nflTeam: "",
+        value: pl.value,
+      }),
+    )
+    setPartnerTeamId(p.fromTeamId)
+    setSelectedTeam(p.fromTeamId)
+    setMessage(`Re: your proposal - here's my counter offer...`)
+  }, [counterId, getById, reset, addGive, addGet, setPartnerTeamId, setMessage])
 
   const aggressiveness = calcAggressiveness(give, get)
   const validation = validateTrade(give, get)
@@ -97,23 +129,23 @@ export default function TradesPage() {
       !get.some((gp) => gp.id === p.id),
   )
 
-  useEffect(() => {
-    if (!counterId) return
-    const p = getById(counterId)
-    if (!p) return
+  const onSaveDraft = () => {
+    if (!validation.isValid) return
 
-    // Prefill: reverse sides for counter (they offered you X for Y)
-    reset()
-    setGive(
-      p.theirPlayers.map((pl) => ({ id: pl.id, name: pl.name, position: pl.position, nflTeam: "", value: pl.value })),
-    )
-    setGet(
-      p.yourPlayers.map((pl) => ({ id: pl.id, name: pl.name, position: pl.position, nflTeam: "", value: pl.value })),
-    )
-    // optional: focus compose textarea or scroll to sandbox
-  }, [counterId, getById, reset])
+    const partnerName = mockTeams.find((t) => t.id === selectedTeam)?.name || "Unknown Team"
+    createDraft({
+      fromTeamId: VIEWER_TEAM_ID,
+      toTeamId: selectedTeam,
+      partner: partnerName,
+      yourPlayers: give.map(toPlayerRef),
+      theirPlayers: get.map(toPlayerRef),
+      valueDifferential: Number(
+        (get.reduce((s, p) => s + p.value, 0) - give.reduce((s, p) => s + p.value, 0)).toFixed(1),
+      ),
+      confidence: 75, // placeholder heuristic
+      message,
+    })
 
-  const handleSaveDraft = () => {
     toast({
       title: "Draft Saved",
       description: "Your trade draft has been saved locally.",
@@ -125,24 +157,25 @@ export default function TradesPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch("/api/proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          give,
-          get,
-          partnerTeamId: selectedTeam,
-          message,
-          status: "sent",
-        }),
+      const partnerName = mockTeams.find((t) => t.id === selectedTeam)?.name || "Unknown Team"
+      const id = createDraft({
+        fromTeamId: VIEWER_TEAM_ID,
+        toTeamId: selectedTeam,
+        partner: partnerName,
+        yourPlayers: give.map(toPlayerRef),
+        theirPlayers: get.map(toPlayerRef),
+        valueDifferential: Number(
+          (get.reduce((s, p) => s + p.value, 0) - give.reduce((s, p) => s + p.value, 0)).toFixed(1),
+        ),
+        confidence: 75,
+        message,
       })
 
-      if (!response.ok) throw new Error("Failed to send proposal")
+      send(id)
 
-      const selectedTeamName = mockTeams.find((t) => t.id === selectedTeam)?.name || "Unknown Team"
       toast({
         title: "Proposal Sent",
-        description: `Proposal sent to ${selectedTeamName}.`,
+        description: `Proposal sent to ${partnerName}.`,
       })
 
       reset()
@@ -164,10 +197,8 @@ export default function TradesPage() {
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Propose Trade</h1>
-              <p className="text-sm text-muted-foreground">
-                Build a trade using your roster and targets. Save as draft or send.
-              </p>
+              <h1 className="text-xl font-semibold tracking-tight">Propose Trade</h1>
+              <p className="text-sm text-muted-foreground">Build a trade using your roster and targets</p>
             </div>
           </div>
         </div>
@@ -479,7 +510,7 @@ export default function TradesPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={handleSaveDraft} className="flex-1 bg-transparent">
+                  <Button variant="outline" onClick={onSaveDraft} className="flex-1 bg-transparent">
                     Save Draft
                   </Button>
                   <Button onClick={() => setConfirmDialogOpen(true)} disabled={!validation.isValid} className="flex-1">
