@@ -1,34 +1,88 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import React from "react"
+import { useEffect, useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Search, Zap, TrendingUp, Users, Clock } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Search, TrendingUp, Users, Zap, Clock } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { TradeSandbox } from "@/components/trade-sandbox"
 
 export default function TradesPage() {
-  const [selectedPosition, setSelectedPosition] = useState("")
-  const [isScanning, setIsScanning] = useState(false)
-  const [scanProgress, setScanProgress] = useState(0)
+  const [tab, setTab] = useState<"suggestions" | "sandbox">("suggestions")
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#sandbox") {
+      setTab("sandbox")
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (tab === "sandbox") window.history.replaceState(null, "", "#sandbox")
+      else window.history.replaceState(null, "", " ")
+    }
+  }, [tab])
+
+  return (
+    <div className="min-h-screen" style={{ background: "#0f0f0f", color: "#B0B6C0" }}>
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-[12px] uppercase" style={{ color: "#B0B6C0" }}>
+              Trades
+            </h1>
+            <TabsList className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+              <TabsTrigger value="suggestions" className="text-xs">
+                Suggestions
+              </TabsTrigger>
+              <TabsTrigger value="sandbox" className="text-xs">
+                Sandbox
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="suggestions" className="space-y-6">
+            <SuggestionsContent />
+          </TabsContent>
+
+          <TabsContent value="sandbox">
+            <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+              <CardHeader>
+                <CardTitle className="text-[12px] uppercase">Trade Sandbox</CardTitle>
+                <CardDescription className="text-xs">Build and evaluate hypothetical trades</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3">
+                <TradeSandbox />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
+
+function SuggestionsContent() {
   const router = useRouter()
+  const [selectedPosition, setSelectedPosition] = React.useState("")
+  const [isScanning, setIsScanning] = React.useState(false)
+  const [scanProgress, setScanProgress] = React.useState(0)
 
   const handleScan = async () => {
     if (!selectedPosition) return
-
     setIsScanning(true)
     setScanProgress(0)
-
-    // Simulate scanning progress
     const interval = setInterval(() => {
       setScanProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval)
           setTimeout(() => {
             router.push("/proposals")
-          }, 500)
+          }, 400)
           return 100
         }
         return prev + Math.random() * 15
@@ -37,162 +91,90 @@ export default function TradesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="font-mono text-3xl font-bold text-[#22c55e] mb-2">FIND_A_TRADE</h1>
-            <p className="font-mono text-sm text-[#94a3b8]">ANALYZE_MARKET_CONDITIONS → GENERATE_OPTIMAL_TRADES</p>
+    <>
+      <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+        <CardHeader>
+          <CardTitle className="text-[12px] uppercase">Scan Parameters</CardTitle>
+          <CardDescription className="text-xs">Configure target position</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 p-3">
+          <div className="space-y-3">
+            <label className="text-[12px] uppercase" style={{ color: "#B0B6C0" }}>
+              Target Position
+            </label>
+            <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+              <SelectTrigger
+                className="rounded-[2px] border"
+                style={{ borderColor: "#2E2E2E", background: "#0E0F11", color: "#B0B6C0" }}
+              >
+                <SelectValue placeholder="Select Position" />
+              </SelectTrigger>
+              <SelectContent className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+                <SelectItem value="QB">QB - QUARTERBACK</SelectItem>
+                <SelectItem value="RB">RB - RUNNING_BACK</SelectItem>
+                <SelectItem value="WR">WR - WIDE_RECEIVER</SelectItem>
+                <SelectItem value="TE">TE - TIGHT_END</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Scan Configuration */}
-          <Card className="bg-[#1a1a1a] border-[#2a2a2a] terminal-glow mb-8">
-            <CardHeader>
-              <CardTitle className="font-mono text-xl text-[#22c55e]">SCAN_PARAMETERS</CardTitle>
-              <CardDescription className="font-mono text-sm text-[#94a3b8]">
-                CONFIGURE_TARGET_POSITION
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <label className="font-mono text-sm text-[#cbd5e1]">TARGET_POSITION</label>
-                <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-                  <SelectTrigger className="bg-[#0f0f0f] border-[#2a2a2a] font-mono text-[#cbd5e1]">
-                    <SelectValue placeholder="SELECT_POSITION" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
-                    <SelectItem value="QB" className="font-mono text-[#cbd5e1]">
-                      QB - QUARTERBACK
-                    </SelectItem>
-                    <SelectItem value="RB" className="font-mono text-[#cbd5e1]">
-                      RB - RUNNING_BACK
-                    </SelectItem>
-                    <SelectItem value="WR" className="font-mono text-[#cbd5e1]">
-                      WR - WIDE_RECEIVER
-                    </SelectItem>
-                    <SelectItem value="TE" className="font-mono text-[#cbd5e1]">
-                      TE - TIGHT_END
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+          {selectedPosition && (
+            <div className="rounded-[2px] border p-3" style={{ borderColor: "#2E2E2E", background: "#0E0F11" }}>
+              <div className="text-[11px] uppercase mb-2" style={{ color: "#B0B6C0" }}>
+                Scan will analyze:
               </div>
-
-              {selectedPosition && (
-                <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                  <div className="font-mono text-xs text-[#94a3b8] mb-3">SCAN_WILL_ANALYZE:</div>
-                  <div className="space-y-2 font-mono text-xs">
-                    <div className="flex items-center space-x-2">
-                      <TrendingUp className="h-3 w-3 text-[#22c55e]" />
-                      <span className="text-[#cbd5e1]">Market trends for {selectedPosition} position</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-3 w-3 text-[#22c55e]" />
-                      <span className="text-[#cbd5e1]">Available players across all teams</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Zap className="h-3 w-3 text-[#22c55e]" />
-                      <span className="text-[#cbd5e1]">Performance projections & matchups</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-3 w-3 text-[#22c55e]" />
-                      <span className="text-[#cbd5e1]">Injury reports & availability</span>
-                    </div>
-                  </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={14} style={{ color: "#22C55E" }} /> Market trends for {selectedPosition}
                 </div>
-              )}
-
-              <Button
-                onClick={handleScan}
-                disabled={!selectedPosition || isScanning}
-                className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-mono font-bold text-lg py-6"
-              >
-                {isScanning ? (
-                  <>
-                    <Search className="mr-2 h-5 w-5 animate-pulse" />
-                    SCANNING_MARKET...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-5 w-5" />
-                    INITIATE_SCAN
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Scanning Animation */}
-          {isScanning && (
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a] terminal-glow">
-              <CardHeader>
-                <CardTitle className="font-mono text-xl text-[#22c55e]">SCANNING_PROGRESS</CardTitle>
-                <CardDescription className="font-mono text-sm text-[#94a3b8]">
-                  ANALYZING_MARKET_DATA
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <Progress value={scanProgress} className="h-3" />
-                  <div className="font-mono text-sm text-center text-[#22c55e]">
-                    {Math.round(scanProgress)}% COMPLETE
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Users size={14} style={{ color: "#22C55E" }} /> Available players across all teams
                 </div>
-
-                <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                  <div className="font-mono text-xs text-[#94a3b8] mb-3">CURRENT_OPERATION:</div>
-                  <div className="space-y-2 font-mono text-xs">
-                    {scanProgress > 0 && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse" />
-                        <span className="text-[#cbd5e1]">Fetching league rosters...</span>
-                      </div>
-                    )}
-                    {scanProgress > 25 && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse" />
-                        <span className="text-[#cbd5e1]">Analyzing player performance...</span>
-                      </div>
-                    )}
-                    {scanProgress > 50 && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse" />
-                        <span className="text-[#cbd5e1]">Calculating trade values...</span>
-                      </div>
-                    )}
-                    {scanProgress > 75 && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse" />
-                        <span className="text-[#cbd5e1]">Generating proposals...</span>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Zap size={14} style={{ color: "#22C55E" }} /> Projections & matchups
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2">
+                  <Clock size={14} style={{ color: "#22C55E" }} /> Injury reports
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Ready State */}
-          {!isScanning && !selectedPosition && (
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-              <CardHeader>
-                <CardTitle className="font-mono text-xl text-[#cbd5e1]">READY_TO_SCAN</CardTitle>
-                <CardDescription className="font-mono text-sm text-[#94a3b8]">
-                  SELECT_POSITION_TO_BEGIN
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Search className="h-16 w-16 text-[#2a2a2a] mx-auto mb-4" />
-                  <p className="font-mono text-sm text-[#94a3b8]">
-                    Choose a target position to start scanning for optimal trades
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
+          <Button
+            onClick={handleScan}
+            disabled={!selectedPosition || isScanning}
+            className="w-full h-10 rounded-[2px]"
+            style={{ background: "#22C55E", color: "#000" }}
+          >
+            {isScanning ? (
+              <>
+                <Search className="mr-2 h-4 w-4 animate-pulse" />
+                Scanning Market…
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 h-4 w-4" />
+                Initiate Scan
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isScanning && (
+        <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+          <CardHeader>
+            <CardTitle className="text-[12px] uppercase">Scanning Progress</CardTitle>
+            <CardDescription className="text-xs">Analyzing market data</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-3">
+            <Progress value={scanProgress} className="h-3" />
+            <div className="text-center font-mono text-sm" style={{ color: "#22C55E" }}>
+              {Math.round(scanProgress)}% COMPLETE
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </>
   )
 }

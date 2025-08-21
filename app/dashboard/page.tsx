@@ -1,356 +1,327 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { TrendingUp, Users, Target, Zap, Terminal, Heart, LogOut, ChevronRight, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
-import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { TrendingUp, TrendingDown } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { DonateModal } from "@/components/donate-modal"
-import { RosterTicker } from "@/components/roster-ticker"
-import { PlayerOverviewModal } from "@/components/player-overview-modal"
-import { QuickActions } from "@/components/quick-actions"
 
 interface Player {
   id: string
   name: string
   position: string
   nflTeam: string
-  fantasyTeam: string
   value: number
   weeklyTrend: number
   projectedPoints: number
-  seasonPoints: number
-  currentWeekProjection: number
-  owned: boolean
 }
 
 const mockRoster: Player[] = [
-  { 
-    id: '1', 
-    name: 'Josh Allen', 
-    position: 'QB', 
-    nflTeam: 'BUF', 
-    fantasyTeam: 'My Team',
-    value: 85, 
-    weeklyTrend: 5.2, 
-    projectedPoints: 24.8, 
-    seasonPoints: 298,
-    currentWeekProjection: 24.8,
-    owned: true
+  { id: "1", name: "Josh Allen", position: "QB", nflTeam: "BUF", value: 28.5, weeklyTrend: 0.2, projectedPoints: 24.8 },
+  {
+    id: "2",
+    name: "Christian McCaffrey",
+    position: "RB",
+    nflTeam: "SF",
+    value: 52.1,
+    weeklyTrend: 0.5,
+    projectedPoints: 22.3,
   },
-  { 
-    id: '2', 
-    name: 'Christian McCaffrey', 
-    position: 'RB', 
-    nflTeam: 'SF', 
-    fantasyTeam: 'My Team',
-    value: 92, 
-    weeklyTrend: -2.1, 
-    projectedPoints: 22.4, 
-    seasonPoints: 268,
-    currentWeekProjection: 22.4,
-    owned: true
+  {
+    id: "3",
+    name: "Justin Jefferson",
+    position: "WR",
+    nflTeam: "MIN",
+    value: 48.9,
+    weeklyTrend: 0.2,
+    projectedPoints: 19.4,
   },
-  { 
-    id: '3', 
-    name: 'Alvin Kamara', 
-    position: 'RB', 
-    nflTeam: 'NO', 
-    fantasyTeam: 'My Team',
-    value: 78, 
-    weeklyTrend: 3.8, 
-    projectedPoints: 18.6, 
-    seasonPoints: 223,
-    currentWeekProjection: 18.6,
-    owned: true
-  },
-  { 
-    id: '4', 
-    name: 'Tyreek Hill', 
-    position: 'WR', 
-    nflTeam: 'MIA', 
-    fantasyTeam: 'My Team',
-    value: 88, 
-    weeklyTrend: 1.4, 
-    projectedPoints: 19.2, 
-    seasonPoints: 230,
-    currentWeekProjection: 19.2,
-    owned: true
-  },
-  { 
-    id: '5', 
-    name: 'Stefon Diggs', 
-    position: 'WR', 
-    nflTeam: 'HOU', 
-    fantasyTeam: 'My Team',
-    value: 82, 
-    weeklyTrend: -1.8, 
-    projectedPoints: 17.8, 
-    seasonPoints: 213,
-    currentWeekProjection: 17.8,
-    owned: true
-  },
-  { 
-    id: '6', 
-    name: 'Mike Evans', 
-    position: 'WR', 
-    nflTeam: 'TB', 
-    fantasyTeam: 'My Team',
-    value: 75, 
-    weeklyTrend: 2.3, 
-    projectedPoints: 16.4, 
-    seasonPoints: 197,
-    currentWeekProjection: 16.4,
-    owned: true
-  },
-  { 
-    id: '7', 
-    name: 'Travis Kelce', 
-    position: 'TE', 
-    nflTeam: 'KC', 
-    fantasyTeam: 'My Team',
-    value: 84, 
-    weeklyTrend: -3.2, 
-    projectedPoints: 15.6, 
-    seasonPoints: 187,
-    currentWeekProjection: 15.6,
-    owned: true
-  },
-  { 
-    id: '8', 
-    name: 'Justin Tucker', 
-    position: 'K', 
-    nflTeam: 'BAL', 
-    fantasyTeam: 'My Team',
-    value: 45, 
-    weeklyTrend: 0.8, 
-    projectedPoints: 8.2, 
-    seasonPoints: 98,
-    currentWeekProjection: 8.2,
-    owned: true
-  },
-  { 
-    id: '9', 
-    name: 'San Francisco', 
-    position: 'DST', 
-    nflTeam: 'SF', 
-    fantasyTeam: 'My Team',
-    value: 38, 
-    weeklyTrend: 4.1, 
-    projectedPoints: 9.4, 
-    seasonPoints: 113,
-    currentWeekProjection: 9.4,
-    owned: true
+  {
+    id: "4",
+    name: "Travis Kelce",
+    position: "TE",
+    nflTeam: "KC",
+    value: 32.1,
+    weeklyTrend: 0.1,
+    projectedPoints: 14.6,
   },
 ]
 
+const hotPlayers: Array<{
+  name: string
+  position: string
+  team: string
+  rosteredPctDelta24h: number
+  projNext: number
+}> = [
+  { name: "Nico Collins", position: "WR", team: "HOU", rosteredPctDelta24h: 14.2, projNext: 15.4 },
+  { name: "Jaylen Warren", position: "RB", team: "PIT", rosteredPctDelta24h: 12.1, projNext: 12.8 },
+  { name: "Tua Tagovailoa", position: "QB", team: "MIA", rosteredPctDelta24h: 11.0, projNext: 22.2 },
+  { name: "Dalton Kincaid", position: "TE", team: "BUF", rosteredPctDelta24h: 10.6, projNext: 11.1 },
+  { name: "Tank Dell", position: "WR", team: "HOU", rosteredPctDelta24h: 16.9, projNext: 14.3 },
+  { name: "Chuba Hubbard", position: "RB", team: "CAR", rosteredPctDelta24h: 10.2, projNext: 9.7 },
+]
+
 export default function DashboardPage() {
-  const [showDonateModal, setShowDonateModal] = useState(false)
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  const [showPlayerModal, setShowPlayerModal] = useState(false)
   const router = useRouter()
+  const totalValue = mockRoster.reduce((s, p) => s + p.value, 0)
+  const totalProj = mockRoster.reduce((s, p) => s + p.projectedPoints, 0)
 
-  useEffect(() => {
-  }, [])
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" })
-      router.push("/")
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+  const addToSandbox = (player: Player) => {
+    router.push("/trades#sandbox")
   }
 
-  const handlePlayerClick = (player: Player) => {
-    setSelectedPlayer(player)
-    setShowPlayerModal(true)
-  }
-
-  const getPositionColor = (position: string) => {
-    switch (position) {
+  const positionColor = (pos: string) => {
+    switch (pos) {
       case "QB":
-        return "text-[#ef4444] border-[#ef4444]"
+        return "#FF3B30"
       case "RB":
-        return "text-[#22c55e] border-[#22c55e]"
+        return "#00FF85"
       case "WR":
-        return "text-[#3b82f6] border-[#3b82f6]"
+        return "#38BDF8"
       case "TE":
-        return "text-[#f59e0b] border-[#f59e0b]"
+        return "#F59E0B"
       case "K":
-        return "text-[#94a3b8] border-[#94a3b8]"
+        return "#94A3B8"
       case "DST":
-        return "text-[#8b5cf6] border-[#8b5cf6]"
+        return "#8B5CF6"
       default:
-        return "text-[#cbd5e1] border-[#cbd5e1]"
+        return "#B0B6C0"
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* Header */}
-      <header className="border-b border-[#2a2a2a] bg-[#1a1a1a]">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Terminal className="h-6 w-6 text-[#22c55e]" />
-                <span className="text-xl font-bold font-mono">TRADEUP</span>
-              </div>
-              <Badge variant="outline" className="text-[#22c55e] border-[#22c55e] font-mono text-xs">
-                DASHBOARD
-              </Badge>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => setShowDonateModal(true)}
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs border-[#f59e0b] text-[#f59e0b] hover:bg-[#f59e0b] hover:text-black bg-transparent"
-              >
-                <Heart className="mr-1 h-3 w-3" />
-                DONATE
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs border-[#94a3b8] text-[#94a3b8] hover:bg-[#94a3b8] hover:text-black bg-transparent"
-              >
-                <LogOut className="mr-1 h-3 w-3" />
-                LOGOUT
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Roster Activity Ticker */}
-      <div className="border-b border-[#2a2a2a]">
-        <div className="container mx-auto px-4 py-4">
-          <RosterTicker />
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Quick Actions */}
-        <QuickActions />
-
-        {/* My Roster */}
-        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
-          <CardHeader>
-            <CardTitle className="text-[#cbd5e1] font-mono">MY_ROSTER</CardTitle>
-            <CardDescription className="text-[#94a3b8] font-mono text-sm">
-              Current roster analysis and projected points
-            </CardDescription>
-          </CardHeader>
-          <div className="px-6 pb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
-              <div className="text-center">
-                <div className="font-mono text-xs text-[#94a3b8] mb-1">TOTAL_VALUE</div>
-                <div className="font-mono text-lg font-bold text-[#22c55e]">
-                  ${mockRoster.reduce((sum, player) => sum + player.value, 0)}{" "}
-                  <span className="text-sm text-[#22c55e]">(+5.1%)</span>
+    <div className="min-h-screen" style={{ background: "#0E0F11", color: "#B0B6C0" }}>
+      <div className="py-6 space-y-3">
+        {/* KPI Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[11px] uppercase">Total Value</CardTitle>
+              <div className="text-[10px] opacity-60">Last updated 2m ago</div>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="text-right">
+                <div className="font-mono text-[20px] leading-tight" style={{ color: "#00FF85" }}>
+                  ${totalValue.toFixed(1)}
+                </div>
+                <div className="font-mono text-[12px]" style={{ color: "#00FF85" }}>
+                  +5.1%
                 </div>
               </div>
-              <div className="text-center">
-                <div className="font-mono text-xs text-[#94a3b8] mb-1">PROJ_POINTS</div>
-                <div className="font-mono text-lg font-bold text-[#22c55e]">
-                  {mockRoster.reduce((sum, player) => sum + player.projectedPoints, 0).toFixed(1)}{" "}
-                  <span className="text-sm text-[#ef4444]">(-1.5%)</span>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[11px] uppercase">Projected Points</CardTitle>
+              <div className="text-[10px] opacity-60">Last updated 2m ago</div>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="text-right">
+                <div className="font-mono text-[20px] leading-tight">{totalProj.toFixed(1)}</div>
+                <div className="font-mono text-[12px]" style={{ color: "#FF3B30" }}>
+                  -1.5%
                 </div>
               </div>
-              <div className="text-center">
-                <div className="font-mono text-xs text-[#94a3b8] mb-1">RECORD</div>
-                <div className="font-mono text-lg font-bold text-[#22c55e]">8-4-0</div>
-              </div>
-            </div>
-          </div>
-          <CardContent>
-            <div className="bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-[#2a2a2a] hover:bg-transparent">
-                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
-                      POSITION
-                    </TableHead>
-                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-left">
-                      PLAYER
-                    </TableHead>
-                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
-                      VALUE
-                    </TableHead>
-                    <TableHead className="font-mono text-xs text-[#94a3b8] font-medium text-center">
-                      PROJ_PTS
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockRoster.map((player, index) => (
-                    <TableRow 
-                      key={index} 
-                      className="border-[#2a2a2a] hover:bg-[#1a1a1a] cursor-pointer"
-                      onClick={() => handlePlayerClick(player)}
-                    >
-                      <TableCell className="py-3 text-left">
-                        <Badge
-                          variant="outline"
-                          className={`font-mono text-xs ${getPositionColor(player.position)}`}
-                        >
-                          {player.position}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 text-left">
-                        <div>
-                          <div className="font-mono text-sm text-[#cbd5e1] font-medium hover:text-[#22c55e] transition-colors">
-                            {player.name}
-                          </div>
-                          <div className="font-mono text-xs text-[#94a3b8]">{player.nflTeam}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3 text-center">
-                        <div className="font-mono text-sm text-[#22c55e] font-semibold">
-                          ${player.value}{" "}
-                          <span
-                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
-                          >
-                            ({player.weeklyTrend > 0 ? "+" : ""}
-                            {player.weeklyTrend}%)
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3 text-center">
-                        <div className="font-mono text-sm text-[#cbd5e1] font-medium">
-                          {player.projectedPoints}{" "}
-                          <span
-                            className={`text-xs ${player.weeklyTrend >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
-                          >
-                            ({player.weeklyTrend > 0 ? "+" : ""}
-                            {player.weeklyTrend}%)
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      <DonateModal open={showDonateModal} onOpenChange={setShowDonateModal} />
-      <PlayerOverviewModal 
-        player={selectedPlayer} 
-        open={showPlayerModal} 
-        onOpenChange={setShowPlayerModal} 
-      />
+          <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-[11px] uppercase">Record</CardTitle>
+              <div className="text-[10px] opacity-60">Regular season</div>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="text-right font-mono text-[20px] leading-tight" style={{ color: "#00FF85" }}>
+                8-4-0
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Row: Roster + Right Column */}
+        <div className="grid grid-cols-12 gap-3">
+          {/* Left: Roster */}
+          <div className="col-span-12 lg:col-span-7">
+            <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[12px] uppercase">My Roster</CardTitle>
+                <CardDescription className="text-[11px]">Current roster and projections</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#0E0F11" }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent" style={{ borderColor: "#2E2E2E" }}>
+                        <TableHead className="text-[11px] uppercase">Position</TableHead>
+                        <TableHead className="text-[11px] uppercase">Player</TableHead>
+                        <TableHead className="text-right text-[11px] uppercase">Value</TableHead>
+                        <TableHead className="text-right text-[11px] uppercase">Proj</TableHead>
+                        <TableHead className="text-right text-[11px] uppercase">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mockRoster.map((p) => (
+                        <TableRow key={p.id} className="group hover:bg-[#121417]" style={{ borderColor: "#2E2E2E" }}>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="rounded-[2px] text-[10px]"
+                              style={{ borderColor: positionColor(p.position), color: positionColor(p.position) }}
+                            >
+                              {p.position}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{p.name}</div>
+                            <div className="text-[11px] opacity-70">{p.nflTeam}</div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${p.value.toFixed(1)}{" "}
+                            {p.weeklyTrend >= 0 ? (
+                              <span className="text-xs" style={{ color: "#00FF85" }}>
+                                +{p.weeklyTrend}%
+                              </span>
+                            ) : (
+                              <span className="text-xs" style={{ color: "#FF3B30" }}>
+                                {p.weeklyTrend}%
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{p.projectedPoints.toFixed(1)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addToSandbox(p)}
+                              className="h-7 border rounded-[2px] text-xs opacity-0 group-hover:opacity-100 transition"
+                              style={{ borderColor: "#2E2E2E", color: "#B0B6C0", background: "transparent" }}
+                            >
+                              Add to Sandbox
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right: Decision Panels */}
+          <div className="col-span-12 lg:col-span-5 space-y-3">
+            {/* Trade vs Waiver */}
+            <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-[12px] uppercase">Trade vs Waiver</CardTitle>
+                  <span className="text-[10px] opacity-60">Updated 2m ago</span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">Target WR2 upgrade</div>
+                  <Badge
+                    className="rounded-[2px] text-[10px]"
+                    style={{
+                      background: "rgba(0,255,133,0.08)",
+                      color: "#00FF85",
+                      borderColor: "rgba(0,255,133,0.22)",
+                    }}
+                    variant="outline"
+                  >
+                    +3.6 vs waiver
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs opacity-80">
+                  <TrendingUp className="h-3.5 w-3.5" style={{ color: "#00FF85" }} /> Jefferson + Kelce stack leverage
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">Add Chuba Hubbard (RB)</div>
+                  <Badge
+                    className="rounded-[2px] text-[10px]"
+                    style={{ background: "#0B1B2F", color: "#38BDF8", borderColor: "#1E40AF" }}
+                    variant="outline"
+                  >
+                    +1.8 vs waiver
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs opacity-80">
+                  <TrendingDown className="h-3.5 w-3.5" style={{ color: "#FF3B30" }} /> Fade low-snap WR3s
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Hot Players */}
+            <Card className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#121417" }}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-[12px] uppercase">Hot Players</CardTitle>
+                  <span className="text-[10px] opacity-60">24h change</span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="rounded-[2px] border" style={{ borderColor: "#2E2E2E", background: "#0E0F11" }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent" style={{ borderColor: "#2E2E2E" }}>
+                        <TableHead className="text-[11px] uppercase">Player</TableHead>
+                        <TableHead className="text-center text-[11px] uppercase">Pos</TableHead>
+                        <TableHead className="text-right text-[11px] uppercase">Rostered Δ</TableHead>
+                        <TableHead className="text-right text-[11px] uppercase">Proj Next</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hotPlayers.map((hp, i) => (
+                        <TableRow key={i} className="hover:bg-[#121417]" style={{ borderColor: "#2E2E2E" }}>
+                          <TableCell>
+                            <div className="text-sm">{hp.name}</div>
+                            <div className="text-[11px] opacity-70">{hp.team}</div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant="outline"
+                              className="rounded-[2px] text-[10px]"
+                              style={{
+                                borderColor:
+                                  hp.position === "RB"
+                                    ? "#00FF85"
+                                    : hp.position === "WR"
+                                      ? "#38BDF8"
+                                      : hp.position === "QB"
+                                        ? "#FF3B30"
+                                        : "#F59E0B",
+                                color:
+                                  hp.position === "RB"
+                                    ? "#00FF85"
+                                    : hp.position === "WR"
+                                      ? "#38BDF8"
+                                      : hp.position === "QB"
+                                        ? "#FF3B30"
+                                        : "#F59E0B",
+                              }}
+                            >
+                              {hp.position}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono" style={{ color: "#00FF85" }}>
+                            +{hp.rosteredPctDelta24h.toFixed(1)}%
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{hp.projNext.toFixed(1)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
