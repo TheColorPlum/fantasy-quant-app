@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  handle    String?
+  createdAt DateTime @default(now())
+}
+
+model League {
+  id              String    @id @default(cuid())
+  espnLeagueId    String    @unique
+  season          Int
+  name            String
+  scoringJson     Json
+  rosterRulesJson Json
+  auctionBudget   Int?
+  firstLoadedAt   DateTime?
+  createdBy       String?
+  teams           Team[]
+}
+
+model Team {
+  id          String  @id @default(cuid())
+  leagueId    String
+  league      League  @relation(fields: [leagueId], references: [id])
+  espnTeamId  Int
+  name        String
+  ownerUserId String?
+
+  @@unique([leagueId, espnTeamId])
+}
+
+model TeamClaim {
+  id        String   @id @default(cuid())
+  leagueId  String
+  teamId    String
+  userId    String
+  claimedAt DateTime @default(now())
+
+  @@unique([leagueId, teamId])
+  @@unique([leagueId, userId])
+}
+
+model Player {
+  id               String   @id @default(cuid())
+  espnPlayerId     Int      @unique
+  name             String
+  posPrimary       String
+  posEligibility   String[]
+  teamAbbr         String?
+}
+
+model RosterSlot {
+  id       String @id @default(cuid())
+  teamId   String
+  playerId String
+  slotType String
+  week     Int
+}
+
+model Projection {
+  id        String   @id @default(cuid())
+  playerId  String
+  week      Int
+  source    String
+  ptsMean   Float
+  ptsP10    Float?
+  ptsP90    Float?
+  updatedAt DateTime @default(now())
+}
+
+model GameLog {
+  id        String   @id @default(cuid())
+  playerId  String
+  week      Int
+  statsJson Json
+  ptsActual Float
+  updatedAt DateTime @default(now())
+}
+
+model AuctionPrice {
+  id        String   @id @default(cuid())
+  leagueId  String
+  playerId  String
+  amount    Float
+  source    String
+  createdAt DateTime @default(now())
+}
+
+model ReplacementBaseline {
+  id           String   @id @default(cuid())
+  season       Int
+  pos          String
+  baselineRank Int
+  ptsPerGame   Float
+  source       String
+  updatedAt    DateTime @default(now())
+}
+
+model Valuation {
+  id         String   @id @default(cuid())
+  leagueId   String
+  playerId   String
+  price      Float
+  components Json
+  ts         DateTime @default(now())
+
+  @@index([leagueId, playerId, ts])
+}
+
+model TradeProposal {
+  id             String   @id @default(cuid())
+  leagueId       String
+  fromTeamId     String
+  toTeamId       String
+  status         String
+  valueDeltaFrom Float
+  valueDeltaTo   Float
+  createdAt      DateTime @default(now())
+}
+
+model TradeItem {
+  id         String @id @default(cuid())
+  proposalId String
+  playerId   String
+  direction  String
+}
+
+model ProposalShare {
+  id         String    @id @default(cuid())
+  proposalId String
+  token      String    @unique
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+}
+
+model SyncJob {
+  id           String    @id @default(cuid())
+  leagueId     String
+  jobType      String
+  status       String
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  error        String?
+}
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  userId      String
+  routeKey    String
+  windowStart DateTime
+  count       Int
+}

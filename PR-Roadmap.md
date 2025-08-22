@@ -25,7 +25,7 @@ This file gives you (the coding agent) everything needed to implement the backen
 
    * `npm run typecheck`
    * `npm run lint`
-   * `npm run test:unit`
+   * `npm run test:unit` (use `npx vitest run` for single-run, avoid watch mode)
    * `npm run test:contract`
    * `npm run test:e2e` (only for PRs that require it)
 7. Self‑review: small diffs, no dead code, no UI changes except atoms in PR14/PR15
