@@ -43,28 +43,32 @@ Build a local‑first dev setup using **Claude Code** with a clean separation be
 
 * **Frontend**: Next.js (App Router), shadcn/ui, Tailwind.
 * **Backend**: Next.js API routes on Vercel (Node runtime), Vercel Cron.
-* **DB**: Supabase Postgres, Drizzle ORM + Drizzle Kit for migrations.
+* **DB**: Supabase Postgres, Prisma ORM + Prisma migrations.
 * **Auth**: Supabase Auth.
-* **Packages**: Turborepo monorepo with shared libs.
-* **Tests**: Vitest + supertest.
+* **Architecture**: Standard Next.js application (not monorepo).
+* **Tests**: Vitest + Jest + Playwright.
 
 ---
 
-## 3) Monorepo Layout (Turborepo)
+## 3) Application Structure (Standard Next.js)
 
 ```
-/apps
-  /web         # Next.js UI only; calls API endpoints
-  /api         # Next.js API routes (Vercel Functions)
-  /worker      # Background job runner (local loop + cron entrypoint)
-/packages
-  /engine      # Pure TS trade engine (no I/O, deterministic)
-  /schemas     # zod schemas + API contracts + DB row types
-  /db          # drizzle schema + migrations + db helpers
-  /utils       # env loader, logger, ids, rate limiting, etc.
+/app            # Next.js App Router pages and API routes
+  /api/*        # API route handlers (Vercel Functions)
+  /(pages)      # UI pages
+/lib            # Shared utilities and business logic
+  /auth.ts      # Supabase authentication helpers
+  /database.ts  # Prisma client singleton
+  /env.ts       # Environment validation
+/prisma         # Database schema and migrations
+  /schema.prisma
+/scripts        # Database seeding and maintenance
+/tests          # Test files organized by type
+  /unit         # Vitest unit tests
+  /e2e          # Playwright e2e tests
 ```
 
-**Rationale**: UI ≠ API ≠ Engine. Engine can be benchmarked and tested in isolation. API orchestrates I/O and calls engine. Worker handles ingestion + valuation jobs.
+**Rationale**: Standard Next.js structure following TDD.md specification. All business logic in /lib, API routes in /app/api, database schema in /prisma.
 
 ---
 
@@ -88,7 +92,7 @@ EXT_API_KEY=
 NODE_ENV=
 ```
 
-Create `/packages/utils/src/env.ts` to validate env via `zod`, and throw on missing keys in server contexts.
+Environment validation handled in `/lib/env.ts` via `zod`, throwing on missing keys in server contexts.
 
 ---
 
@@ -100,66 +104,71 @@ Create `/packages/utils/src/env.ts` to validate env via `zod`, and throw on miss
 ```json
 {
   "scripts": {
-    "dev": "turbo run dev",
-    "dev:web": "next dev --turbo -p 3000",
-    "dev:api": "next dev -p 3001",
-    "dev:worker": "tsx apps/worker/src/index.ts",
-    "typecheck": "turbo run typecheck",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "migrate": "drizzle-kit migrate",
-    "generate": "drizzle-kit generate",
-    "bench": "turbo run bench"
+    "dev": "next dev",
+    "build": "next build", 
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest",
+    "test:contract": "jest", 
+    "test:e2e": "playwright test",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx scripts/seed.ts"
   }
 }
 ```
 
-* **Supabase local**: `supabase start` to run Postgres + Studio.
-* Run in two/three terminals: `pnpm dev:api`, `pnpm dev:web`, `pnpm dev:worker`.
+* **Database setup**: Use Supabase for hosted Postgres or local setup with `supabase start`.
+* **Development**: Run `npm run dev` for Next.js development server.
+* **Database**: Use `npm run db:migrate` and `npm run db:seed` for schema management.
 
 **Claude Working Style**
 
-* Work primarily in `/packages/engine` when iterating algorithms.
-* Always write/update tests and fixtures first (Vitest).
+* Work primarily in `/lib` for business logic and API integrations.
+* Always write/update tests first (Vitest for unit, Jest for contract, Playwright for e2e).
 * Keep changes small and incremental; ensure typecheck passes.
 
 ---
 
-## 6) Data Model (Drizzle + Supabase)
+## 6) Data Model (Prisma + Supabase)
 
-**Tables** (simplify/rename as needed):
+**Tables** (implemented in `/prisma/schema.prisma`):
 
-* `players` (id, name, team, position, meta\_json, created\_at)
-* `market_inputs` (id, player\_id, source, ts, fields\_json, source\_checksum, created\_at)
-* `valuations` (id, player\_id, ts, engine\_version, inputs\_hash, value\_numeric, diagnostics\_json, created\_at)
-* `trade_scenarios` (id, created\_by, params\_json, status, created\_at)
-* `trade_results` (id, scenario\_id, engine\_version, result\_json, scores\_json, created\_at)
-* `jobs` (id, type, payload\_json, status, attempts, last\_error, scheduled\_for, idempotency\_key, created\_at)
+* `User`, `League`, `Team`, `TeamClaim` - Core fantasy sports structure
+* `Player`, `RosterSlot` - Player data and team rosters
+* `Projection`, `GameLog`, `AuctionPrice`, `ReplacementBaseline` - Performance data
+* `Valuation` - Calculated player values and components
+* `TradeProposal`, `TradeItem`, `ProposalShare` - Trade management
+* `SyncJob`, `RateLimit` - Background processing and API protection
 
-**Indexes / Constraints**
+**Key Constraints & Indexes**
 
-* `valuations` unique: `(player_id, engine_version, inputs_hash)`
-* `market_inputs` unique: `(player_id, source, ts)` or `(source_checksum)`
-* `jobs` unique on `idempotency_key` (nullable).
+* `League.espnLeagueId` unique
+* `Team` unique on `(leagueId, espnTeamId)`
+* `TeamClaim` unique on `(leagueId, teamId)` and `(leagueId, userId)`
+* `Player.espnPlayerId` unique
+* `Valuation` indexed on `(leagueId, playerId, ts)`
+* `ProposalShare.token` unique
 
 ---
 
-## 7) Trade Engine Package (Pure TS)
+## 7) Trade Engine (Pure TS)
 
-`/packages/engine/src/index.ts`
+`/lib/trade-engine.ts`
 
 * No network, no DB, no env. Deterministic math only.
-* Input = normalized domain data (via zod schemas from `/packages/schemas`).
+* Input = normalized domain data (via zod schemas).
 * Output = valuations + explainability diagnostics.
 * Export a version string. Bump on logic changes and write to DB with results.
 
 **Performance target**: <100ms for \~1k players on a laptop for basic valuation.
 
-**Testing**: Golden tests against fixtures; a micro-benchmark in `/packages/engine/bench`.
+**Testing**: Golden tests against fixtures in `/tests/unit/`.
 
 ---
 
-## 8) API Endpoints (apps/api)
+## 8) API Endpoints (/app/api)
 
 **Runtime**: Node (not Edge) for ingestion + engine.
 
@@ -207,17 +216,17 @@ Create `/packages/utils/src/env.ts` to validate env via `zod`, and throw on miss
 ## 11) Testing Strategy
 
 * **Engine**: Vitest, golden fixtures, performance budget, deterministic.
-* **API**: supertest integration with local Supabase (seed script in `/packages/db/seed`).
+* **API**: supertest integration with local Supabase (seed script in `/scripts/seed.ts`).
 * **Worker**: run fake queue in-memory; assert idempotency and retry semantics.
-* **CI**: `pnpm -w bench` fails build on perf regressions; `pnpm -w typecheck` gates all PRs.
+* **CI**: `npm run test:unit` and `npm run typecheck` gate all PRs.
 
 ---
 
 ## 12) Deployment
 
-* `/apps/web` + `/apps/api`: Vercel projects (monorepo).
+* Standard Next.js application deployed to Vercel.
 * **Cron**: Vercel Cron → `POST /api/cron/tick` every minute.
-* **Migrations**: run Drizzle migrations via CI (Vercel build step or GitHub Action) before exposing new code paths.
+* **Migrations**: run Prisma migrations via CI (Vercel build step or GitHub Action) before exposing new code paths.
 
 ---
 
@@ -304,7 +313,7 @@ loop().catch(e => { console.error("Worker crashed", e); process.exit(1); });
 
 ## 15) Rollout Plan (1 Sprint)
 
-1. Split repo → `apps/*`, `packages/*`; add Drizzle schema; seed; engine v1 with tests.
+1. Set up Prisma schema and database; add seed script; engine v1 with tests.
 2. Ingestion endpoint → write to `market_inputs`; `jobs` table + worker loop locally.
 3. Implement `revalue_all` job; write `valuations` with unique key `(engine_version, inputs_hash)`.
 4. UI reads from `GET /api/valuations`; add Vercel Cron; deploy preview.
@@ -322,21 +331,21 @@ loop().catch(e => { console.error("Worker crashed", e); process.exit(1); });
 
 **Init Prompt (paste into Claude Code on open)**
 
-> You are the repo’s coding assistant. Follow *Claude.md* as the single source of truth. Before any change: (1) read `/packages/engine`, `/packages/schemas`, `/packages/db`, (2) run typecheck and tests, (3) propose a minimal diff plan. Constraints: engine is pure and versioned; APIs are idempotent; jobs use SKIP LOCKED; all env validated via zod. Deliver: code + tests; no speculative refactors. If unclear, open a TODO and stop.
+> You are the repo's coding assistant. Follow *Claude.md* as the single source of truth. Before any change: (1) read `/lib`, `/prisma/schema.prisma`, (2) run typecheck and tests, (3) propose a minimal diff plan. Constraints: engine is pure and versioned; APIs are idempotent; all env validated via zod. Deliver: code + tests; no speculative refactors. If unclear, open a TODO and stop.
 
 **Playbook: Add a new factor to valuation**
 
-1. Edit zod input/output in `/packages/schemas`.
-2. Bump `engine_version` and implement logic in `/packages/engine`.
-3. Update fixtures + golden tests.
-4. Add migration if persisted diagnostics shape changes.
+1. Edit zod input/output schemas in `/lib`.
+2. Bump `engine_version` and implement logic in `/lib/trade-engine.ts`.
+3. Update fixtures + golden tests in `/tests/unit`.
+4. Add Prisma migration if persisted diagnostics shape changes.
 5. Rewire API to include the new normalized field during ingestion.
 
 **Playbook: New ingestion source**
 
-1. Add normalizer in `/apps/api/src/lib/normalize/<source>.ts`.
-2. Map fields → `market_inputs`; compute `source_checksum`.
-3. Extend `/api/ingest/snapshot` switch.
+1. Add normalizer in `/lib/normalize/<source>.ts`.
+2. Map fields to Prisma models; compute `source_checksum`.
+3. Extend `/app/api/ingest/snapshot` switch.
 4. Add basic rate limit + backoff.
 
 **Playbook: Debug a job**
@@ -350,7 +359,7 @@ loop().catch(e => { console.error("Worker crashed", e); process.exit(1); });
 ## 17) Editing Conventions
 
 * TypeScript strict mode on; no `any` unless justified.
-* Paths use TS path aliases (`@fantasy-quant/*`).
+* Paths use TS path aliases (`@/*`).
 * Keep functions small and pure; explain complex math in comments.
 * Update this file when architecture decisions change (add a short ADR section).
 
@@ -360,6 +369,7 @@ loop().catch(e => { console.error("Worker crashed", e); process.exit(1); });
 
 * **ADR-001**: Chose jobs table + Vercel Cron over managed queues to keep initial infra simple and portable. Will migrate to Vercel Queues when throughput demands it.
 * **ADR-002**: Engine is a pure package for determinism and testability; all I/O lives in API/worker.
+* **ADR-003**: Use Prisma instead of Drizzle for better TypeScript integration and mature ecosystem. Use standard Next.js structure instead of Turborepo monorepo for simplicity.
 
 ---
 
