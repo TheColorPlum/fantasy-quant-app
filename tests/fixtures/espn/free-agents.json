@@ -1,0 +1,47 @@
+[
+  {
+    "id": 4241479,
+    "player": {
+      "id": 4241479,
+      "fullName": "Jaylen Warren",
+      "defaultPositionId": 2,
+      "eligibleSlots": [2, 20, 21],
+      "proTeamId": 23,
+      "stats": [
+        {
+          "seasonId": 2025,
+          "statSourceId": 0,
+          "statSplitTypeId": 0,
+          "stats": {
+            "24": 45,
+            "25": 187,
+            "42": 1
+          }
+        }
+      ]
+    },
+    "status": "FREEAGENT"
+  },
+  {
+    "id": 4567890,
+    "player": {
+      "id": 4567890,
+      "fullName": "Romeo Doubs",
+      "defaultPositionId": 3,
+      "eligibleSlots": [4, 20, 21],
+      "proTeamId": 9,
+      "stats": [
+        {
+          "seasonId": 2025,
+          "statSourceId": 0,
+          "statSplitTypeId": 0,
+          "stats": {
+            "42": 2,
+            "43": 1
+          }
+        }
+      ]
+    },
+    "status": "FREEAGENT"
+  }
+]

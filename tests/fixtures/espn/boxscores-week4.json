@@ -1,0 +1,73 @@
+[
+  {
+    "matchupPeriodId": 4,
+    "teams": [
+      {
+        "teamId": 1,
+        "totalPoints": 134.7,
+        "roster": {
+          "entries": [
+            {
+              "playerId": 4046533,
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "player": {
+                  "id": 4046533,
+                  "fullName": "Josh Allen",
+                  "defaultPositionId": 1,
+                  "eligibleSlots": [0, 20, 21],
+                  "proTeamId": 2,
+                  "stats": [
+                    {
+                      "seasonId": 2025,
+                      "statSourceId": 1,
+                      "statSplitTypeId": 1,
+                      "stats": {
+                        "53": 23.4,
+                        "42": 2,
+                        "44": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "teamId": 2,
+        "totalPoints": 126.3,
+        "roster": {
+          "entries": [
+            {
+              "playerId": 4362628,
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "player": {
+                  "id": 4362628,
+                  "fullName": "Lamar Jackson",
+                  "defaultPositionId": 1,
+                  "eligibleSlots": [0, 20, 21],
+                  "proTeamId": 33,
+                  "stats": [
+                    {
+                      "seasonId": 2025,
+                      "statSourceId": 1,
+                      "statSplitTypeId": 1,
+                      "stats": {
+                        "53": 28.3,
+                        "42": 3,
+                        "44": 0
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

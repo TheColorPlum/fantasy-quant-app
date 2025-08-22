@@ -1,0 +1,30 @@
+[
+  {
+    "playerId": 4046533,
+    "playerName": "Josh Allen",
+    "bidAmount": 65,
+    "nominatingTeamId": 1,
+    "overallDraftPosition": 1
+  },
+  {
+    "playerId": 3915511,
+    "playerName": "Christian McCaffrey", 
+    "bidAmount": 72,
+    "nominatingTeamId": 2,
+    "overallDraftPosition": 2
+  },
+  {
+    "playerId": 4362628,
+    "playerName": "Lamar Jackson",
+    "bidAmount": 58,
+    "nominatingTeamId": 1,
+    "overallDraftPosition": 3
+  },
+  {
+    "playerId": 4035687,
+    "playerName": "Tyreek Hill",
+    "bidAmount": 45,
+    "nominatingTeamId": 2,
+    "overallDraftPosition": 4
+  }
+]

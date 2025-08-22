@@ -1,0 +1,31 @@
+{
+  "id": 12345,
+  "seasonId": 2025,
+  "currentScoringPeriod": 4,
+  "settings": {
+    "name": "Test Fantasy League",
+    "scoringSettings": {
+      "scoringItems": [
+        { "statId": 53, "points": 1.0 },
+        { "statId": 42, "points": 6.0 },
+        { "statId": 43, "points": 4.0 },
+        { "statId": 44, "points": -2.0 }
+      ]
+    },
+    "rosterSettings": {
+      "lineupSlotCounts": {
+        "0": 1,
+        "2": 2,
+        "4": 2,
+        "6": 1,
+        "16": 1,
+        "17": 1,
+        "20": 1,
+        "21": 6
+      }
+    },
+    "acquisitionSettings": {
+      "acquisitionBudget": 200
+    }
+  }
+}
