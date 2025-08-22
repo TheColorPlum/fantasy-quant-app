@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "name": "Team Alpha",
+    "abbrev": "ALPH",
+    "owners": [
+      {
+        "id": "user123",
+        "displayName": "John Doe"
+      }
+    ],
+    "roster": {
+      "entries": [
+        {
+          "playerId": 4046533,
+          "lineupSlotId": 0,
+          "playerPoolEntry": {
+            "player": {
+              "id": 4046533,
+              "fullName": "Josh Allen",
+              "defaultPositionId": 1,
+              "eligibleSlots": [0, 20, 21],
+              "proTeamId": 2,
+              "stats": [
+                {
+                  "seasonId": 2025,
+                  "statSourceId": 0,
+                  "statSplitTypeId": 0,
+                  "stats": {
+                    "53": 287.4,
+                    "42": 27,
+                    "44": 8
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "playerId": 3915511,
+          "lineupSlotId": 2,
+          "playerPoolEntry": {
+            "player": {
+              "id": 3915511,
+              "fullName": "Christian McCaffrey",
+              "defaultPositionId": 2,
+              "eligibleSlots": [2, 20, 21],
+              "proTeamId": 25,
+              "stats": [
+                {
+                  "seasonId": 2025,
+                  "statSourceId": 0,
+                  "statSplitTypeId": 0,
+                  "stats": {
+                    "24": 72,
+                    "25": 298,
+                    "42": 4
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "name": "Team Beta",
+    "abbrev": "BETA",
+    "owners": [
+      {
+        "id": "user456",
+        "displayName": "Jane Smith"
+      }
+    ],
+    "roster": {
+      "entries": [
+        {
+          "playerId": 4362628,
+          "lineupSlotId": 0,
+          "playerPoolEntry": {
+            "player": {
+              "id": 4362628,
+              "fullName": "Lamar Jackson",
+              "defaultPositionId": 1,
+              "eligibleSlots": [0, 20, 21],
+              "proTeamId": 33,
+              "stats": [
+                {
+                  "seasonId": 2025,
+                  "statSourceId": 0,
+                  "statSplitTypeId": 0,
+                  "stats": {
+                    "53": 312.8,
+                    "42": 31,
+                    "44": 6
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+]
