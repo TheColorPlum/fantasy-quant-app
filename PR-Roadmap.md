@@ -29,8 +29,9 @@ This file gives you (the coding agent) everything needed to implement the backen
    * `npm run test:contract`
    * `npm run test:e2e` (only for PRs that require it)
 7. Self‑review: small diffs, no dead code, no UI changes except atoms in PR14/PR15
-8. Open PR with the template and await human validation
-9. After approval: **Squash merge**, **delete branch**, **tick the checklist**
+8. Create PR using CLI: `gh pr create --title "PRXX - Title" --body "Summary, test plan, implementation details"`
+9. Await human validation and approval on GitHub
+10. After approval: **Squash merge**, **delete branch**, **tick the checklist**
 
 **Commit style**: Conventional Commits (e.g., `feat(api): add /api/leagues/join`)
 
