@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { generateTradeProposals } from '@/lib/trades/generate';
 import { db } from '@/lib/database';
+import { checkAndIncrement } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,21 @@ export async function POST(
     }
 
     const leagueId = params.id;
+
+    // Rate limiting: 20 trade generations per hour per user
+    const rateLimit = await checkAndIncrement(
+      user.id,
+      'trades:generate',
+      20,
+      60 * 60 * 1000 // 1 hour
+    );
+
+    if (rateLimit === 'limited') {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Maximum 20 trade generations per hour.' },
+        { status: 429 }
+      );
+    }
 
     // Parse request body
     const body = await req.json().catch(() => ({}));
