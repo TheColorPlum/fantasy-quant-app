@@ -26,15 +26,23 @@ vi.mock('@/lib/trades/generate', () => ({
   generateTradeProposals: vi.fn()
 }));
 
+vi.mock('@/lib/rate-limit', () => ({
+  checkAndIncrement: vi.fn()
+}));
+
 describe('Trade Generation API', async () => {
   const mockAuth = vi.mocked(await import('@/lib/auth'));
   const mockDb = vi.mocked(await import('@/lib/database')).db;
   const mockTradeGen = vi.mocked(await import('@/lib/trades/generate'));
+  const mockRateLimit = vi.mocked(await import('@/lib/rate-limit'));
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Default rate limit mock
+    mockRateLimit.checkAndIncrement.mockResolvedValue('ok');
   });
 
   const mockUser = {
@@ -385,6 +393,56 @@ describe('Trade Generation API', async () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot generate trades with yourself');
+    });
+
+    it('returns 429 when rate limited', async () => {
+      mockAuth.getSessionUser.mockResolvedValue(mockUser);
+      mockRateLimit.checkAndIncrement.mockResolvedValue('limited');
+
+      const request = new NextRequest('http://localhost:3000/api/leagues/league-1/trades/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          fromTeamId: 'team-1'
+        })
+      });
+
+      const response = await POST(request, { params: { id: 'league-1' } });
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Rate limit exceeded. Maximum 20 trade generations per hour.');
+    });
+
+    it('enforces rate limiting with correct parameters', async () => {
+      mockAuth.getSessionUser.mockResolvedValue(mockUser);
+      mockDb.league.findUnique.mockResolvedValue(mockLeagueWithAccess);
+      mockDb.teamClaim.findFirst.mockResolvedValue(mockUserTeamClaim);
+      mockTradeGen.generateTradeProposals.mockResolvedValue({
+        proposals: [],
+        meta: {
+          totalCandidates: 0,
+          filteredCandidates: 0,
+          mode: 'balanced',
+          fromTeamId: 'team-1',
+          targetTeamIds: ['team-2']
+        }
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/leagues/league-1/trades/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          fromTeamId: 'team-1'
+        })
+      });
+
+      await POST(request, { params: { id: 'league-1' } });
+
+      expect(mockRateLimit.checkAndIncrement).toHaveBeenCalledWith(
+        'user-1',
+        'trades:generate',
+        20,
+        60 * 60 * 1000
+      );
     });
 
     it('handles trade generation errors gracefully', async () => {
