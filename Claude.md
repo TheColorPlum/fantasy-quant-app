@@ -8,6 +8,11 @@ This file is the **project context / scope / memory bank** and the **initializat
 
 These files are the source of truth for all implementation decisions.
 
+**GIT WORKFLOW NOTE**: The repository remote should use HTTPS (not SSH) due to deploy key configuration:
+```bash
+git remote set-url origin https://github.com/TheColorPlum/fantasy-quant-app.git
+```
+
 ---
 
 ## 0) One‑liner
