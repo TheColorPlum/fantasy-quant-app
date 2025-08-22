@@ -2,6 +2,12 @@
 
 This file is the **project context / scope / memory bank** and the **initialization prompt** for Claude when working in VS Code on this repo. It captures the architecture, constraints, folder layout, APIs, data model, job system, and DX rules. Claude should read this file *first* before making changes.
 
+**IMPORTANT**: For implementation guidance and roadmap, refer to:
+- **PR-Roadmap.md** - The authoritative 15-PR implementation checklist and specifications
+- **TDD.md** - The complete technical design document with data models, API surface, and formulas
+
+These files are the source of truth for all implementation decisions.
+
 ---
 
 ## 0) One‑liner
