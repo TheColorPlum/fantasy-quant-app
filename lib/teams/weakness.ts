@@ -22,7 +22,7 @@ export interface StarterSlot {
 }
 
 /**
- * Calculate team weakness by comparing starters to replacement baselines
+ * Calculate team weakness using TDD A9 formula
  */
 export async function calculateTeamWeakness(
   leagueId: string, 
@@ -68,6 +68,18 @@ export async function calculateTeamWeakness(
     acc[baseline.pos] = baseline.ptsPerGame;
     return acc;
   }, {} as Record<string, number>);
+
+  // Get current valuations to calculate VPP - TDD A9 requirement
+  const valuations = await db.valuation.findMany({
+    where: { 
+      leagueId: leagueId 
+    },
+    orderBy: { ts: 'desc' },
+    take: 100 // Get recent valuations for VPP calculation
+  });
+
+  // Calculate value-per-point using same method as valuation engine
+  const vpp = await calculateValuePerPointFromValuations(valuations, baselineMap);
 
   // Get league's roster rules to understand starting lineup requirements
   const rosterRules = typeof team.league.rosterRulesJson === 'object' && team.league.rosterRulesJson !== null
@@ -127,51 +139,70 @@ export async function calculateTeamWeakness(
   // Select optimal starters using greedy algorithm
   const { starters, flexStarter } = selectOptimalStarters(rosterPlayers, lineupRequirements);
 
-  // Calculate deficits by position
+  // Calculate deficits using TDD A9 formula
   const weaknessItems: WeaknessItem[] = [];
   let totalNeedScore = 0;
 
+  // TDD A9: For each position p, calculate B_p_team and S_p_team
   for (const [pos, required] of Object.entries(lineupRequirements)) {
     if (pos === 'FLEX') continue; // Handle FLEX separately
 
+    const baseline = baselineMap[pos] || 8.0; // R_p (replacement baseline)
     const positionStarters = starters.filter(starter => starter.pos === pos);
-    const baseline = baselineMap[pos] || 8.0; // Default baseline
-
+    
+    
+    // B_p_team = lineupSlotCounts[p] × R_p
+    const baselineTeamPts = required * baseline;
+    
+    // S_p_team = Σ PPG_proj_i of chosen starters at p
+    let starterTeamPts = 0;
+    for (let i = 0; i < required; i++) {
+      const starter = positionStarters[i];
+      starterTeamPts += starter?.projectedPts || 0;
+    }
+    
+    // Deficit_p = max(0, B_p_team − S_p_team)
+    const deficitPts = Math.max(0, baselineTeamPts - starterTeamPts);
+    
+    // Create individual deficit items for each slot (independent of total position deficit)
     for (let i = 0; i < required; i++) {
       const starter = positionStarters[i];
       const starterPts = starter?.projectedPts || 0;
-      const deficitPts = Math.max(0, baseline - starterPts);
+      const slotDeficit = Math.max(0, baseline - starterPts);
       
-      if (deficitPts > 0.1) { // Only report meaningful deficits
+      
+      if (slotDeficit > 0.1) {
         const drivers = buildDeficitDrivers(starter, baseline, i + 1);
-        const deficitValue = calculateDeficitValue(deficitPts, team.league.auctionBudget || 200);
+        const slotDeficitValue = vpp * slotDeficit;
         
         weaknessItems.push({
           pos: pos + (required > 1 ? (i + 1).toString() : ''),
-          deficitPts: Math.round(deficitPts * 100) / 100,
-          deficitValue: Math.round(deficitValue * 100) / 100,
+          deficitPts: Math.round(slotDeficit * 100) / 100,
+          deficitValue: Math.round(slotDeficitValue * 100) / 100,
           drivers
         });
-
-        totalNeedScore += deficitPts;
+        
+        // Add individual slot deficit to total need score
+        totalNeedScore += slotDeficit;
       }
     }
   }
 
-  // Handle FLEX position (RB/WR/TE flexibility)
-  if (lineupRequirements.FLEX && flexStarter) {
+  // Handle FLEX position using TDD A9 formula
+  if (lineupRequirements.FLEX) {
+    // Use minimum baseline of FLEX-eligible positions as FLEX baseline
     const flexBaseline = Math.min(
       baselineMap.RB || 12.0,
       baselineMap.WR || 11.0, 
       baselineMap.TE || 9.0
     );
     
-    const flexPts = flexStarter.projectedPts || 0;
+    const flexPts = flexStarter?.projectedPts || 0;
     const flexDeficit = Math.max(0, flexBaseline - flexPts);
     
     if (flexDeficit > 0.1) {
       const drivers = buildDeficitDrivers(flexStarter, flexBaseline, 1, 'FLEX');
-      const deficitValue = calculateDeficitValue(flexDeficit, team.league.auctionBudget || 200);
+      const deficitValue = vpp * flexDeficit; // Use VPP from TDD formula
       
       weaknessItems.push({
         pos: 'FLEX',
@@ -279,11 +310,72 @@ function buildDeficitDrivers(
 }
 
 /**
- * Convert deficit points to dollar value based on league auction budget
+ * Calculate value-per-point from existing valuations - follows TDD A4 method
  */
-function calculateDeficitValue(deficitPts: number, auctionBudget: number): number {
-  // Simple value per point calculation
-  // In a typical 200-budget league, value-per-point is approximately $1.5-2.0
-  const valuePerPoint = auctionBudget / 100; // Rough approximation
-  return deficitPts * valuePerPoint;
+async function calculateValuePerPointFromValuations(
+  valuations: any[],
+  baselineMap: Record<string, number>
+): Promise<number> {
+  if (valuations.length === 0) {
+    console.warn('No valuations found for VPP calculation, using fallback');
+    return 2.0; // Conservative fallback VPP
+  }
+
+  // Get players with auction prices from components
+  const playersWithAuctions = valuations.filter(v => 
+    v.components && 
+    typeof v.components === 'object' && 
+    v.components.anchor && 
+    v.components.anchor > 0
+  );
+
+  if (playersWithAuctions.length === 0) {
+    console.warn('No auction data in valuations, using fallback VPP');
+    return 2.0; // Fallback
+  }
+
+  let vppSum = 0;
+  let vppValues: number[] = [];
+
+  for (const valuation of playersWithAuctions) {
+    const components = valuation.components;
+    const auctionPrice = components.anchor; // A_i from components
+    
+    // Extract VORP points from components (this contains the PPG_proj - R calculation)  
+    const vorpComponent = components.vorp || 0;
+    
+    if (vorpComponent > 0.1) { // Avoid division by very small numbers
+      const playerVpp = auctionPrice / Math.max(0.1, vorpComponent);
+      vppValues.push(playerVpp);
+      vppSum += auctionPrice;
+    }
+  }
+
+  if (vppValues.length === 0) {
+    return 2.0; // Fallback
+  }
+
+  // Calculate total VORP points
+  const totalVorpPoints = playersWithAuctions.reduce((sum, v) => {
+    return sum + Math.max(0.1, v.components.vorp || 0);
+  }, 0);
+
+  const vppSumMethod = vppSum / totalVorpPoints;
+  const vppMedian = median(vppValues);
+
+  // TDD A4: vpp = 0.5*vpp_sum + 0.5*vpp_med
+  const vpp = 0.5 * vppSumMethod + 0.5 * vppMedian;
+
+  console.log(`VPP from valuations: sum=$${vppSumMethod.toFixed(2)}, median=$${vppMedian.toFixed(2)}, final=$${vpp.toFixed(2)}`);
+  return Math.max(1.0, vpp); // Ensure reasonable minimum
+}
+
+/**
+ * Calculate median of array
+ */
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
