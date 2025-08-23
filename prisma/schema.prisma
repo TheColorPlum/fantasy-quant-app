@@ -113,14 +113,16 @@ model ReplacementBaseline {
 }
 
 model Valuation {
-  id         String   @id @default(cuid())
-  leagueId   String
-  playerId   String
-  price      Float
-  components Json
-  ts         DateTime @default(now())
+  id            String   @id @default(cuid())
+  leagueId      String
+  playerId      String
+  price         Float
+  components    Json
+  engineVersion String
+  ts            DateTime @default(now())
 
   @@index([leagueId, playerId, ts])
+  @@index([leagueId, engineVersion])
 }
 
 model TradeProposal {

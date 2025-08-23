@@ -31,19 +31,16 @@ export interface ValuationResult {
   };
 }
 
-const ENGINE_VERSION = '0.1.0';
+const ENGINE_VERSION = '1.0.0';
 
-// Position-specific price clamps
-const POSITION_CLAMPS = {
-  'QB': { min: 1.0, max: 80.0 },
-  'RB': { min: 0.5, max: 75.0 },
-  'WR': { min: 0.5, max: 70.0 },
-  'TE': { min: 0.5, max: 50.0 },
-  'K': { min: 0.5, max: 15.0 },
-  'D/ST': { min: 0.5, max: 20.0 }
-} as const;
+// TDD Constants from Appendix
+const EMA_ALPHA = 1 - Math.pow(2, -1/3); // ≈ 0.2063 for half-life h=3
+const EPSILON = 0.1; // Smoothing epsilon
+const H_PERF = 3; // Performance horizon in weeks  
+const H_VORP = 1; // VORP horizon in weeks
+const REPLACEMENT_SMOOTHING_K = 3; // Replacement baseline smoothing
 
-// Component weights from TDD specification
+// Component weights from TDD specification (A8)
 const COMPONENT_WEIGHTS = {
   anchor: 0.45,      // 45% - Auction/ADP baseline
   deltaPerf: 0.20,   // 20% - Performance adjustment  
@@ -132,12 +129,17 @@ export async function computeLeagueValuations(leagueId: string): Promise<Valuati
     return acc;
   }, {} as Record<string, number>);
 
+  // Calculate value-per-point (vpp) from auction data - TDD A4
+  const vpp = calculateValuePerPoint(players, baselineMap);
+  
+  console.log(`Calculated value-per-point: $${vpp.toFixed(2)}`);
+
   // Compute valuations for each player
   const valuations: PlayerValuation[] = [];
   
   for (const player of players) {
     try {
-      const valuation = await computePlayerValuation(player, baselineMap, league);
+      const valuation = await computePlayerValuation(player, baselineMap, vpp, league);
       if (valuation) {
         valuations.push(valuation);
       }
@@ -171,35 +173,33 @@ export async function computeLeagueValuations(leagueId: string): Promise<Valuati
 }
 
 /**
- * Compute valuation for a single player
+ * Compute valuation for a single player following TDD specification
  */
 async function computePlayerValuation(
   player: any,
   baselineMap: Record<string, number>,
+  vpp: number,
   league: any
 ): Promise<PlayerValuation | null> {
   
   const position = player.posPrimary;
-  const clamp = POSITION_CLAMPS[position as keyof typeof POSITION_CLAMPS];
+
+  // Get projected points per game
+  const ppgProj = getProjectedPointsPerGame(player);
   
-  if (!clamp) {
-    console.warn(`No price clamp defined for position: ${position}`);
-    return null;
-  }
+  // Component 1: Anchor (C_anchor_i = A_i) - TDD A7
+  const anchor = getAuctionPrice(player);
 
-  // Component 1: Anchor (A) - Auction price or ADP baseline
-  const anchor = computeAnchorValue(player, position);
+  // Component 2: Delta Performance (C_perf_i) - TDD A5
+  const deltaPerf = computeDeltaPerformanceEMA(player, ppgProj, vpp);
 
-  // Component 2: Delta Performance (ΔPerf) - Recent performance vs expectations
-  const deltaPerf = computeDeltaPerformance(player);
+  // Component 3: VORP (C_vorp_i) - TDD A6  
+  const vorp = computeVORPComponent(player, baselineMap, position, ppgProj, vpp);
 
-  // Component 3: VORP - Value over replacement player
-  const vorp = computeVORP(player, baselineMap, position);
+  // Component 4: Global (G_i) - TDD A7 (0 in MVP)
+  const global = 0; // As specified in TDD: "G_i as normalized global anchor, 0 in MVP if absent"
 
-  // Component 4: Global (G) - Market adjustment factors
-  const global = computeGlobalAdjustment(player, position);
-
-  // Calculate final price using component weights
+  // Calculate final price using TDD A8 formula
   const components: ValuationComponents = {
     anchor,
     deltaPerf, 
@@ -209,12 +209,12 @@ async function computePlayerValuation(
 
   const rawPrice = 
     COMPONENT_WEIGHTS.anchor * anchor +
-    COMPONENT_WEIGHTS.deltaPerf * (anchor + deltaPerf) + // ΔPerf is additive to anchor
+    COMPONENT_WEIGHTS.deltaPerf * (anchor + deltaPerf) + // Note: (anchor + deltaPerf) not just deltaPerf
     COMPONENT_WEIGHTS.vorp * vorp +
     COMPONENT_WEIGHTS.global * global;
 
-  // Apply position-specific clamps
-  const price = Math.max(clamp.min, Math.min(clamp.max, rawPrice));
+  // Apply position-specific clamps - TDD A8 mentions using p05/p95 but for MVP use simpler clamps
+  const price = Math.max(0.5, rawPrice); // Minimum $0.50, no arbitrary max for now
 
   return {
     playerId: player.id,
@@ -231,93 +231,129 @@ async function computePlayerValuation(
 }
 
 /**
- * Compute anchor value (auction price or position baseline)
+ * Calculate value-per-point (vpp) from auction data - TDD A4
  */
-function computeAnchorValue(player: any, position: string): number {
-  // Use actual auction price if available
-  if (player.AuctionPrice.length > 0) {
-    return player.AuctionPrice[0].amount;
-  }
-
-  // Fall back to position-based baseline
-  const positionBaselines = {
-    'QB': 15.0,
-    'RB': 20.0, 
-    'WR': 18.0,
-    'TE': 12.0,
-    'K': 5.0,
-    'D/ST': 8.0
-  };
-
-  return positionBaselines[position as keyof typeof positionBaselines] || 10.0;
-}
-
-/**
- * Compute delta performance (recent performance vs baseline)
- */
-function computeDeltaPerformance(player: any): number {
-  if (player.GameLog.length === 0) {
-    return 0; // No recent performance data
-  }
-
-  // Calculate average points from recent games (last 4 weeks)
-  const recentPoints = player.GameLog.slice(0, 4).map((log: any) => log.ptsActual);
-  const avgRecent = recentPoints.reduce((a: number, b: number) => a + b, 0) / recentPoints.length;
-
-  // Calculate season average if we have more data
-  const seasonPoints = player.GameLog.map((log: any) => log.ptsActual);
-  const avgSeason = seasonPoints.length > 0 
-    ? seasonPoints.reduce((a: number, b: number) => a + b, 0) / seasonPoints.length 
-    : avgRecent;
-
-  // Delta is recent performance vs season average
-  const delta = avgRecent - avgSeason;
+function calculateValuePerPoint(players: any[], baselineMap: Record<string, number>): number {
+  // Get players with auction prices: S = { i | A_i > 0 }
+  const playersWithAuctions = players.filter(p => p.AuctionPrice.length > 0);
   
-  // Scale the delta (each point of performance difference = ~$2 in value)
-  return delta * 2.0;
+  if (playersWithAuctions.length === 0) {
+    console.warn('No auction data found, using fallback VPP');
+    return 1.0; // Conservative fallback as per TDD
+  }
+
+  let vppSum = 0;
+  let vppValues: number[] = [];
+  
+  for (const player of playersWithAuctions) {
+    const auctionPrice = player.AuctionPrice[0].amount; // A_i
+    const ppgProj = getProjectedPointsPerGame(player);
+    const baseline = baselineMap[player.posPrimary] || 8.0; // R_{pos(i)}
+    const vorpPoints = Math.max(EPSILON, ppgProj - baseline); // max(ε, PPG_proj_i − R_{pos(i)})
+    
+    const playerVpp = auctionPrice / vorpPoints;
+    vppValues.push(playerVpp);
+    vppSum += auctionPrice;
+  }
+  
+  // TDD A4 formula
+  const totalVorpPoints = playersWithAuctions.reduce((sum, player) => {
+    const ppgProj = getProjectedPointsPerGame(player);
+    const baseline = baselineMap[player.posPrimary] || 8.0;
+    return sum + Math.max(EPSILON, ppgProj - baseline);
+  }, 0);
+  
+  const vppSumMethod = vppSum / totalVorpPoints;
+  const vppMedian = median(vppValues);
+  
+  // vpp = 0.5*vpp_sum + 0.5*vpp_med
+  const vpp = 0.5 * vppSumMethod + 0.5 * vppMedian;
+  
+  console.log(`VPP calculation: sum=$${vppSumMethod.toFixed(2)}, median=$${vppMedian.toFixed(2)}, final=$${vpp.toFixed(2)}`);
+  return vpp;
 }
 
 /**
- * Compute Value Over Replacement Player (VORP)
+ * Get projected points per game for a player
  */
-function computeVORP(player: any, baselineMap: Record<string, number>, position: string): number {
-  const replacementLevel = baselineMap[position] || 8.0; // Default replacement level
-
-  // Estimate player's projected points per game
-  let projectedPPG = replacementLevel;
-
+function getProjectedPointsPerGame(player: any): number {
+  // Use most recent projection if available
+  if (player.Projection.length > 0) {
+    const projections = player.Projection.sort((a: any, b: any) => b.week - a.week);
+    return projections[0].ptsMean;
+  }
+  
+  // Fallback to TDD A3: PPG_fallback_i = 0.6×rolling_avg_actual_3w + 0.4×pos_mean_proj
   if (player.GameLog.length > 0) {
-    // Use recent game log average
-    const totalPoints = player.GameLog.reduce((sum: number, log: any) => sum + log.ptsActual, 0);
-    projectedPPG = totalPoints / player.GameLog.length;
-  } else if (player.Projection.length > 0) {
-    // Fall back to projections
-    const avgProjection = player.Projection.reduce((sum: number, proj: any) => sum + proj.ptsMean, 0) / player.Projection.length;
-    projectedPPG = avgProjection;
+    const recentLogs = player.GameLog.slice(0, 3); // Last 3 weeks
+    const rollingAvg = recentLogs.reduce((sum: number, log: any) => sum + log.ptsActual, 0) / recentLogs.length;
+    
+    // For MVP, use rolling average * 0.6 + position mean * 0.4
+    const posMeanFallback = {
+      'QB': 18.0, 'RB': 14.0, 'WR': 13.0, 'TE': 10.0, 'K': 8.0, 'D/ST': 9.0
+    };
+    const positionMean = posMeanFallback[player.posPrimary as keyof typeof posMeanFallback] || 12.0;
+    
+    return 0.6 * rollingAvg + 0.4 * positionMean;
   }
-
-  // VORP is points above replacement * value per point
-  const pointsAboveReplacement = Math.max(0, projectedPPG - replacementLevel);
   
-  // Scale: each point above replacement = ~$1.5 in value
-  return pointsAboveReplacement * 1.5;
+  // Ultimate fallback: position baseline
+  const posBaseline = {
+    'QB': 16.0, 'RB': 12.0, 'WR': 11.0, 'TE': 8.5, 'K': 7.0, 'D/ST': 8.0
+  };
+  return posBaseline[player.posPrimary as keyof typeof posBaseline] || 10.0;
 }
 
 /**
- * Compute global market adjustment
+ * Get auction price (A_i) - TDD A7  
  */
-function computeGlobalAdjustment(player: any, position: string): number {
-  // Simple global adjustments based on position scarcity and league context
-  const adjustments = {
-    'QB': 2.0,   // QBs are plentiful, slight discount
-    'RB': 5.0,   // RBs are scarce, premium
-    'WR': 3.0,   // WRs are balanced
-    'TE': 4.0,   // TEs are scarce after elite tier
-    'K': 1.0,    // Kickers are mostly interchangeable  
-    'D/ST': 2.0  // Defenses have some variability
-  };
+function getAuctionPrice(player: any): number {
+  return player.AuctionPrice.length > 0 ? player.AuctionPrice[0].amount : 0;
+}
 
-  return adjustments[position as keyof typeof adjustments] || 2.0;
+/**
+ * Compute delta performance using EMA - TDD A5
+ */
+function computeDeltaPerformanceEMA(player: any, ppgProj: number, vpp: number): number {
+  if (player.GameLog.length === 0) {
+    return 0; // ΔPerf_i[0] = 0
+  }
+  
+  const logs = player.GameLog.sort((a: any, b: any) => a.week - b.week); // Sort chronologically
+  let deltaPerf = 0; // ΔPerf_i[0] = 0
+  
+  for (const log of logs) {
+    // Weekly error: e_i[w] = PPG_actual_i[w] − PPG_proj_i[w]
+    const error = log.ptsActual - ppgProj;
+    // ΔPerf_i[w] = α*e_i[w] + (1−α)*ΔPerf_i[w−1]
+    deltaPerf = EMA_ALPHA * error + (1 - EMA_ALPHA) * deltaPerf;
+  }
+  
+  // Currency tilt: C_perf_i = vpp × H_perf × ΔPerf_i
+  return vpp * H_PERF * deltaPerf;
+}
+
+/**
+ * Compute VORP component - TDD A6
+ */
+function computeVORPComponent(player: any, baselineMap: Record<string, number>, position: string, ppgProj: number, vpp: number): number {
+  const replacementLevel = baselineMap[position] || 8.0; // R_{pos(i)}
+  
+  // VORP_pts_i = PPG_proj_i − R_{pos(i)}
+  const vorpPoints = ppgProj - replacementLevel;
+  
+  // C_vorp_i = vpp × H_vorp × VORP_pts_i  
+  return vpp * H_VORP * vorpPoints;
+}
+
+/**
+ * Calculate median of array
+ */
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
 /**
