@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Eye, Lock, Share2, ExternalLink } from "lucide-react"
+import { Plus, Eye, Lock, Share2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react"
 import { useProposalsStore, type Proposal } from "@/lib/proposals-store"
 import { useRouter } from "next/navigation"
+import { AggressivenessLabel } from "@/components/ui/AggressivenessLabel"
 
 interface ApiProposal {
   id: string;
@@ -70,6 +71,28 @@ export default function ProposalsPage() {
 
   const [selectedProposal, setSelectedProposal] = useState<ApiProposal | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set())
+  const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
+
+  // Helper functions
+  const getPartnerName = (proposal: ApiProposal, isInbox: boolean): string => {
+    if (isInbox) {
+      return proposal.fromTeam.name
+    }
+    return proposal.toTeam.name
+  }
+
+  const toggleRationale = (proposalId: string) => {
+    setExpandedRationales(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(proposalId)) {
+        newSet.delete(proposalId)
+      } else {
+        newSet.add(proposalId)
+      }
+      return newSet
+    })
+  }
 
   // Load proposal by token
   useEffect(() => {
@@ -161,7 +184,8 @@ export default function ProposalsPage() {
   const copyMessage = useCallback((message: string, id: string) => {
     if (!message) return
     navigator.clipboard.writeText(message)
-    setTimeout(() => {}, 2000)
+    setCopiedMessage(id)
+    setTimeout(() => setCopiedMessage(null), 2000)
   }, [])
 
   const onAccept = useCallback((id: string) => {
@@ -457,6 +481,43 @@ export default function ProposalsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Aggressiveness Label */}
+                    <div className="mt-4 pt-4 border-t">
+                      <AggressivenessLabel 
+                        deltaYou={proposal.valueDelta.you} 
+                        deltaOpp={proposal.valueDelta.them} 
+                      />
+                    </div>
+
+                    {/* Rationale Disclosure */}
+                    {proposal.rationale && (
+                      <div className="mt-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => toggleRationale(proposal.id)}
+                        >
+                          {expandedRationales.has(proposal.id) ? (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mr-1" />
+                          )}
+                          Trade Analysis
+                        </Button>
+                        {expandedRationales.has(proposal.id) && (
+                          <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm">
+                            {proposal.rationale.split('\n').map((line, i) => (
+                              <div key={i} className="mb-1">
+                                {line.startsWith('•') || line.startsWith('-') ? line : `• ${line}`}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {proposal.message && (
                       <div className="mt-4 p-3 bg-muted rounded-md">
                         <p className="text-sm">{proposal.message}</p>
@@ -519,6 +580,43 @@ export default function ProposalsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Aggressiveness Label */}
+                    <div className="mt-4 pt-4 border-t">
+                      <AggressivenessLabel 
+                        deltaYou={proposal.valueDelta.you} 
+                        deltaOpp={proposal.valueDelta.them} 
+                      />
+                    </div>
+
+                    {/* Rationale Disclosure */}
+                    {proposal.rationale && (
+                      <div className="mt-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => toggleRationale(proposal.id)}
+                        >
+                          {expandedRationales.has(proposal.id) ? (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mr-1" />
+                          )}
+                          Trade Analysis
+                        </Button>
+                        {expandedRationales.has(proposal.id) && (
+                          <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm">
+                            {proposal.rationale.split('\n').map((line, i) => (
+                              <div key={i} className="mb-1">
+                                {line.startsWith('•') || line.startsWith('-') ? line : `• ${line}`}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {proposal.message && (
                       <div className="mt-4 p-3 bg-muted rounded-md">
                         <p className="text-sm">{proposal.message}</p>
