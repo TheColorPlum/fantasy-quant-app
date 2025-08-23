@@ -53,18 +53,18 @@ This file gives you (the coding agent) everything needed to implement the backen
 
 Mark `[x]` when merged to `main`.
 
-* [ ] **PR01 — Repo Hygiene & Env + Test Tooling**
-* [ ] **PR02 — Supabase Auth Wiring (JWT)**
-* [ ] **PR03 — Prisma + DB Schema (Phase 1)**
-* [ ] **PR04 — ESPN Client Wrapper (Node mkreiser)**
-* [ ] **PR05 — League Join API & Bulk Sync Job**
-* [ ] **PR06 — Team Claim API**
-* [ ] **PR07 — Players API (valuations & ownership)**
-* [ ] **PR08 — Valuation Engine v0**
-* [ ] **PR09 — Weakness Scoring API**
-* [ ] **PR10 — Trade Generation API (balanced default)**
+* [x] **PR01 — Repo Hygiene & Env + Test Tooling**
+* [x] **PR02 — Supabase Auth Wiring (JWT)**
+* [x] **PR03 — Prisma + DB Schema (Phase 1)**
+* [x] **PR04 — ESPN Client Wrapper (Node mkreiser)**
+* [x] **PR05 — League Join API & Bulk Sync Job**
+* [x] **PR06 — Team Claim API**
+* [x] **PR07 — Players API (valuations & ownership)**
+* [x] **PR08 — Valuation Engine v0**
+* [x] **PR09 — Weakness Scoring API**
+* [x] **PR10 — Trade Generation API (balanced default)**
 * [ ] **PR11 — Proposals Persistence + Share Links**
-* [ ] **PR12 — Rate Limiting (DB‑based)**
+* [x] **PR12 — Rate Limiting (DB‑based)**
 * [ ] **PR13 — Observability & Health**
 * [ ] **PR14 — UI Atoms & Feedback (bundle 1)**
 * [ ] **PR15 — UI Atoms & Explainability (bundle 2)**

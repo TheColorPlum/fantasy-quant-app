@@ -18,8 +18,8 @@ model User {
 }
 
 model League {
-  id              String    @id @default(cuid())
-  espnLeagueId    String    @unique
+  id              String          @id @default(cuid())
+  espnLeagueId    String          @unique
   season          Int
   name            String
   scoringJson     Json
@@ -28,15 +28,18 @@ model League {
   firstLoadedAt   DateTime?
   createdBy       String?
   teams           Team[]
+  tradeProposals  TradeProposal[]
 }
 
 model Team {
-  id          String  @id @default(cuid())
-  leagueId    String
-  league      League  @relation(fields: [leagueId], references: [id])
-  espnTeamId  Int
-  name        String
-  ownerUserId String?
+  id                String          @id @default(cuid())
+  leagueId          String
+  league            League          @relation(fields: [leagueId], references: [id])
+  espnTeamId        Int
+  name              String
+  ownerUserId       String?
+  proposalsFrom     TradeProposal[] @relation("ProposalsFrom")
+  proposalsTo       TradeProposal[] @relation("ProposalsTo")
 
   @@unique([leagueId, espnTeamId])
 }
@@ -53,12 +56,13 @@ model TeamClaim {
 }
 
 model Player {
-  id               String   @id @default(cuid())
-  espnPlayerId     Int      @unique
+  id               String      @id @default(cuid())
+  espnPlayerId     Int         @unique
   name             String
   posPrimary       String
   posEligibility   String[]
   teamAbbr         String?
+  tradeItems       TradeItem[]
 }
 
 model RosterSlot {
@@ -120,29 +124,56 @@ model Valuation {
 }
 
 model TradeProposal {
-  id             String   @id @default(cuid())
-  leagueId       String
-  fromTeamId     String
-  toTeamId       String
-  status         String
-  valueDeltaFrom Float
-  valueDeltaTo   Float
-  createdAt      DateTime @default(now())
+  id                    String      @id @default(cuid())
+  leagueId              String
+  fromTeamId            String
+  toTeamId              String
+  status                String      @default("draft") // draft, sent, accepted, rejected, expired
+  valueDeltaFrom        Float
+  valueDeltaTo          Float
+  needDeltaFromBefore   Float
+  needDeltaFromAfter    Float
+  needDeltaToBefore     Float
+  needDeltaToAfter      Float
+  needDeltaFromByPos    Json        // Record<string, number>
+  needDeltaToByPos      Json        // Record<string, number>
+  rationale             String
+  generationMode        String      // balanced | strict
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  expiresAt             DateTime?
+  
+  // Relations
+  league                League      @relation(fields: [leagueId], references: [id])
+  fromTeam              Team        @relation("ProposalsFrom", fields: [fromTeamId], references: [id])
+  toTeam                Team        @relation("ProposalsTo", fields: [toTeamId], references: [id])
+  items                 TradeItem[]
+  shares                ProposalShare[]
 }
 
 model TradeItem {
-  id         String @id @default(cuid())
-  proposalId String
-  playerId   String
-  direction  String
+  id           String        @id @default(cuid())
+  proposalId   String
+  playerId     String
+  playerName   String
+  position     String
+  value        Float
+  direction    String        // "give" | "get"
+  
+  // Relations
+  proposal     TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  player       Player        @relation(fields: [playerId], references: [id])
 }
 
 model ProposalShare {
-  id         String    @id @default(cuid())
+  id         String        @id @default(cuid())
   proposalId String
-  token      String    @unique
-  createdAt  DateTime  @default(now())
+  token      String        @unique
+  createdAt  DateTime      @default(now())
   revokedAt  DateTime?
+  
+  // Relations
+  proposal   TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 }
 
 model SyncJob {
