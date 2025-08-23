@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import { resolve } from 'path';
 import { PrismaClient } from '@prisma/client';
+import '@testing-library/jest-dom';
 
 const DATABASE_URL = 'file:./test.db';
 

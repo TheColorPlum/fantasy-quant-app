@@ -63,9 +63,9 @@ Mark `[x]` when merged to `main`.
 * [x] **PR08 — Valuation Engine v0**
 * [x] **PR09 — Weakness Scoring API**
 * [x] **PR10 — Trade Generation API (balanced default)**
-* [ ] **PR11 — Proposals Persistence + Share Links**
+* [x] **PR11 — Proposals Persistence + Share Links**
 * [x] **PR12 — Rate Limiting (DB‑based)**
-* [ ] **PR13 — Observability & Health**
+* [x] **PR13 — Observability & Health**
 * [ ] **PR14 — UI Atoms & Feedback (bundle 1)**
 * [ ] **PR15 — UI Atoms & Explainability (bundle 2)**
 
