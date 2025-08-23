@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { db } from '@/lib/database';
+import { withRequestId } from '@/lib/log';
 
 export const runtime = 'nodejs';
 
@@ -41,7 +42,7 @@ const CreateProposalSchema = z.object({
 /**
  * Create a new trade proposal
  */
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     // Get authenticated user
     const user = await getSessionUser();
@@ -206,7 +207,7 @@ export async function POST(req: NextRequest) {
 /**
  * Get trade proposals for the authenticated user
  */
-export async function GET(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   try {
     // Get authenticated user
     const user = await getSessionUser();
@@ -345,3 +346,6 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const POST = withRequestId(postHandler);
+export const GET = withRequestId(getHandler);

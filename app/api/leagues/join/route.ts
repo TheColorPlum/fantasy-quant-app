@@ -4,6 +4,7 @@ import { db } from '@/lib/database';
 import { getSessionUser } from '@/lib/auth';
 import { checkAndIncrement } from '@/lib/rate-limit';
 import { performBulkIngest } from '@/lib/ingest/bulk';
+import { withRequestId } from '@/lib/log';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +15,7 @@ const JoinLeagueSchema = z.object({
   SWID: z.string().optional()
 });
 
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   try {
     // Get authenticated user
     const user = await getSessionUser();
@@ -160,3 +161,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withRequestId(postHandler);
