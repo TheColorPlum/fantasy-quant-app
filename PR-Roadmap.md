@@ -1,12 +1,12 @@
-# CLAUDE.md — Execution Guide for Fantasy Quant (Ultra‑Detailed)
+# CLAUDE.md — Execution Guide for Fantasy Quant (Ultra-Detailed)
 
 This file gives you (the coding agent) everything needed to implement the backend/services with **tests first**, no UI inventions, and zero ambiguity.
 
 > **Hard rules**
 >
 > * Do **not** add new pages or flows. Only wire to existing screens under `app/`.
-> * Default trade mode is **balanced needs** (both sides’ NeedScore decreases) with ≤3% value give‑up tolerance.
-> * Keep costs low: DB‑based rate limits; in‑app notifications only.
+> * Default trade mode is **balanced needs** (both sides’ NeedScore decreases) with ≤3% value give-up tolerance.
+> * Keep costs low: DB-based rate limits; in-app notifications only.
 > * Use **TypeScript** everywhere.
 > * Use **Zod** for runtime validation on inputs.
 > * Use **Prisma** for DB access.
@@ -25,11 +25,15 @@ This file gives you (the coding agent) everything needed to implement the backen
 
    * `npm run typecheck`
    * `npm run lint`
-   * `npm run test:unit` (use `npx vitest run` for single-run, avoid watch mode)
+   * `npm run test:unit` (use `npx vitest run` for single-run, **NEVER leave in watch mode**)
    * `npm run test:contract`
    * `npm run test:e2e` (only for PRs that require it)
-7. Self‑review: small diffs, no dead code, no UI changes except atoms in PR14/PR15
-8. Create PR using CLI: `gh pr create --title "PRXX - Title" --body "Summary, test plan, implementation details"`
+7. Self-review: small diffs, no dead code, no UI changes except atoms in PR14/PR15
+8. **MANDATORY GIT WORKFLOW** (NEVER FORGET):
+   * `git add` relevant files
+   * `git commit` with proper message format including Claude Code signature
+   * `git push -u origin branch-name`
+   * `gh pr create --title "PRXX - Title" --body "Summary, test plan, implementation details"`
 9. Await human validation and approval on GitHub
 10. After approval: **Squash merge**, **delete branch**, **tick the checklist**
 
@@ -64,10 +68,20 @@ Mark `[x]` when merged to `main`.
 * [x] **PR09 — Weakness Scoring API**
 * [x] **PR10 — Trade Generation API (balanced default)**
 * [x] **PR11 — Proposals Persistence + Share Links**
-* [x] **PR12 — Rate Limiting (DB‑based)**
+* [x] **PR12 — Rate Limiting (DB-based)**
 * [x] **PR13 — Observability & Health**
-* [ ] **PR14 — UI Atoms & Feedback (bundle 1)**
-* [ ] **PR15 — UI Atoms & Explainability (bundle 2)**
+* [x] **PR14 — UI Atoms & Feedback (bundle 1)**
+* [x] **PR15 — UI Atoms & Explainability (bundle 2)**
+* [ ] **PR16 — Valuation Engine (MVP)**
+* [ ] **PR17 — Team Weakness**
+* [ ] **PR18 — Trade Generation v1**
+* [ ] **PR19 — Trade Evaluation**
+* [ ] **PR20 — Share Links Security**
+* [ ] **PR21 — Rate Limiting Completion**
+* [ ] **PR22 — Observability Cohesion**
+* [ ] **PR23 — UI: Live APIs**
+* [ ] **PR24 — ESPN Ingest Completion**
+* [ ] **PR25 — Schema Hardening + E2E**
 
 ---
 
@@ -534,20 +548,221 @@ export async function checkAndIncrement(userId:string, routeKey:string, limit:nu
 
 ---
 
-## ESPN Usage Rules for Tests
+### PR16 — Valuation Engine (MVP, deterministic & persisted)
 
-* Use **fixtures** under `tests/fixtures/espn/` for wrapper tests
-* Do **not** call live ESPN endpoints in unit/contract tests
-* Integration tests may call live endpoints only when `ESPNUSE_LIVE=1` (default off)
+**Objective**: Replace mocks with a deterministic valuation system, persisted in DB.
+
+**Files & contents**:
+- `lib/valuation/compute.ts` — implement `computeLeagueValuations(leagueId)` with Anchor, ΔPerf (EWMA), VORP, Global neutrality, weighted by position.
+- `app/api/leagues/[id]/valuations/rebuild/route.ts` — call compute+save, return metadata.
+
+**Tests**:
+- Golden-case unit test with sample data; neutrality error < 1%.
+- Rebuild endpoint returns `{ leagueId, engineVersion, totals }`.
+
+**Acceptance**:
+- Engine runs end-to-end, persists valuations, returns coherent totals.
 
 ---
 
-## Environment Variables (see `.env.example`)
+### PR17 — Team Weakness & Optimal Starters
 
-* `DATABASE_URL` — Postgres
-* `NEXT_PUBLIC_POSTHOG_KEY` — optional
-* `SENTRY_DSN` — optional
-* `ESPNAUTH_ENCRYPTION_KEY` — 32‑byte hex for cookie encryption
+**Objective**: Compute NeedScore and per-position deficits from valuations.
+
+**Files & contents**:
+- `lib/teams/weakness.ts` — optimal starter selection, NeedScore calc, BYE/injury adjustments.
+- `app/api/leagues/[id]/weakness/route.ts` — request `{ teamId }`, response `{ needScore, items[] }`.
+
+**Tests**:
+- Unit: lineup with holes → positive NeedScore; upgrade reduces it.
+- API: deterministic shape with Zod validation.
+
+**Acceptance**:
+- Deterministic NeedScore per seeded league.
+
+---
+
+### PR18 — Trade Generation v1 (real data)
+
+**Objective**: Generate top 3 trades from valuations + weakness.
+
+**Files & contents**:
+- `lib/trades/generate.ts` — implement scoring: ΔNeed_you, ΔNeed_them, Fairness, RosterRisk.
+- `app/api/trade/generate/route.ts` — request `{ fromTeamId, toTeamId?, targets?, sendables? }`, return trade cards.
+
+**Tests**:
+- Unit: deterministic ranking.
+- API: validation + shape.
+
+**Acceptance**:
+- Endpoint returns ≥1 trade with consistent deltas.
+
+---
+
+### PR19 — Trade Evaluation (fairness + rationale)
+
+**Objective**: Evaluate arbitrary proposals against valuations.
+
+**Files & contents**:
+- `lib/trade-engine.ts` — implement `evaluateTrade`.
+- `app/api/trade/evaluate/route.ts` — replace mock, add Zod.
+
+**Tests**:
+- Unit: fairness ∈ [0,1], symmetric deltas.
+- API: shape + validation.
+
+**Acceptance**:
+- API returns metrics + rationale.
+
+---
+
+### PR20 — Share Links: Security Hardening
+
+**Objective**: Safe, expiring, auditable share links.
+
+**Schema**:
+```prisma
+model ProposalShare {
+  id         String   @id @default(cuid())
+  proposalId String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+Files & contents:
+
+app/api/proposals/[id]/share-link/route.ts — create base62 token, hash with sha256, set TTL=7d.
+
+app/api/proposals/token/[token]/route.ts — validate token, enforce TTL, return sanitized proposal.
+
+Tests:
+
+Unit: token hashed in DB, 404 on expired, payload sanitized.
+
+Acceptance:
+
+No PII leakage; links expire securely.
+
+PR21 — Rate Limiting Completion
+Objective: Finish DB-backed limiter with schema + enforcement.
+
+Schema:
+
+prisma
+Copy
+Edit
+model RateLimitHit {
+  id          String   @id @default(cuid())
+  userId      String
+  routeKey    String
+  windowStart DateTime
+  createdAt   DateTime @default(now())
+}
+Files & contents:
+
+lib/rate-limit.ts — sliding window, return rate-limit headers.
+
+Wrap expensive routes.
+
+Tests:
+
+Unit + integration verifying 429 and headers.
+
+Acceptance:
+
+Limits enforced, headers correct.
+
+PR22 — Observability Cohesion
+Objective: Uniform logging and health.
+
+Files & contents:
+
+Wrap all API routes with withRequestId.
+
+app/api/health/route.ts — extend with schemaOk, lastValuationAt, engineVersion.
+
+lib/sentry.ts — captureError with context.
+
+Tests:
+
+Unit tests for logging + health.
+
+Acceptance:
+
+All responses include x-request-id.
+
+PR23 — UI: Remove Mocks → Live APIs
+Objective: Wire screens to real APIs.
+
+Files & contents:
+
+app/players/page.tsx — players API, Δ vs replacement.
+
+app/trades/page.tsx — generate/evaluate APIs, risk chips.
+
+app/proposals/page.tsx — proposals APIs, read-only mode on token.
+
+Tests:
+
+Component tests.
+
+Playwright: create → share → token view.
+
+Acceptance:
+
+No mock imports remain.
+
+PR24 — ESPN Ingest Completion
+Objective: End-to-end ingest from fixtures.
+
+Files & contents:
+
+lib/espn/client.ts — complete wrapper.
+
+lib/ingest/bulk.ts — orchestrate ingest, last 4 weeks + current.
+
+Tests:
+
+Wrapper unit tests with fixtures.
+
+Bulk ingest writes expected rows.
+
+Acceptance:
+
+Ingest + rebuild valuations succeeds with fixtures.
+
+PR25 — Schema Hardening + Smoke E2E
+Objective: Lock down indices & run smoke E2E.
+
+Schema updates:
+
+Indices: valuations, proposal shares.
+
+FKs on TradeItem→TradeProposal.
+
+E2E:
+
+Playwright flow: login stub → join → valuations → trades → generate → evaluate → share → token view.
+
+Acceptance:
+
+Migration applies clean; smoke passes.
+
+ESPN Usage Rules for Tests
+Use fixtures under tests/fixtures/espn/ for wrapper tests
+
+Do not call live ESPN endpoints in unit/contract tests
+
+Integration tests may call live endpoints only when ESPNUSE_LIVE=1 (default off)
+
+Environment Variables (see .env.example)
+DATABASE_URL — Postgres
+
+NEXT_PUBLIC_POSTHOG_KEY — optional
+
+SENTRY_DSN — optional
+
+ESPNAUTH_ENCRYPTION_KEY — 32-byte hex for cookie encryption
 
 ---
 

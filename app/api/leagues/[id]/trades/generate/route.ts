@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSessionUser } from '@/lib/auth';
 import { generateTradeProposals } from '@/lib/trades/generate';
+import { generateDeterministicTrades } from '@/lib/trades/deterministic';
 import { db } from '@/lib/database';
 import { checkAndIncrement } from '@/lib/rate-limit';
 
@@ -126,8 +127,8 @@ export async function POST(
 
     console.log(`Generating ${tradeParams.mode} trade proposals for team ${tradeParams.fromTeamId} in league ${leagueId}`);
 
-    // Generate trade proposals
-    const result = await generateTradeProposals(leagueId, tradeParams);
+    // Generate trade proposals using deterministic engine (PR18)
+    const result = await generateDeterministicTrades(leagueId, tradeParams);
 
     return NextResponse.json({
       success: true,
