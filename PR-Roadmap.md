@@ -72,16 +72,17 @@ Mark `[x]` when merged to `main`.
 * [x] **PR13 — Observability & Health**
 * [x] **PR14 — UI Atoms & Feedback (bundle 1)**
 * [x] **PR15 — UI Atoms & Explainability (bundle 2)**
-* [ ] **PR16 — Valuation Engine (MVP)**
-* [ ] **PR17 — Team Weakness**
-* [ ] **PR18 — Trade Generation v1**
-* [ ] **PR19 — Trade Evaluation**
+* [x] **PR16 — Valuation Engine (MVP)**
+* [x] **PR17 — Team Weakness & Optimal Starters**
+* [x] **PR18 — Trade Generation Engine (MVP)**
+* [x] **PR19 — Trade Evaluation (fairness + rationale)**
 * [ ] **PR20 — Share Links Security**
 * [ ] **PR21 — Rate Limiting Completion**
 * [ ] **PR22 — Observability Cohesion**
 * [ ] **PR23 — UI: Live APIs**
 * [ ] **PR24 — ESPN Ingest Completion**
 * [ ] **PR25 — Schema Hardening + E2E**
+* [ ] **PR26 — LLM-Enhanced Trade Rationale (post-staging)**
 
 ---
 
@@ -747,6 +748,55 @@ Playwright flow: login stub → join → valuations → trades → generate → 
 Acceptance:
 
 Migration applies clean; smoke passes.
+
+---
+
+### PR26 — LLM-Enhanced Trade Rationale (post-staging)
+
+**Objective**: Replace hardcoded rationale generation with LLM-powered explainability for sophisticated trade analysis.
+
+**Prerequisites**: 
+- Local/staging testing environment available
+- Trade evaluation engine (PR19) deployed and tested
+- Cost/usage monitoring in place
+
+**Files & contents**:
+- `lib/llm/rationale.ts` — LLM client for trade explanation generation
+- `lib/trade-engine.ts` — replace `generateTradeRationale` with LLM integration
+- `app/api/trade/evaluate/route.ts` — add error handling for LLM failures
+
+**LLM Integration**:
+- Use Claude/OpenAI API for rationale generation
+- Structured prompts with trade context: player values, positions, team needs
+- Fallback to simplified rationale on LLM failure
+- Rate limiting and cost controls for LLM calls
+
+**Tests**:
+- Unit: LLM mock responses, fallback scenarios
+- Integration: real LLM calls in staging environment only
+- Performance: rationale generation <2s p95
+
+**Acceptance**:
+- Rationale quality significantly improved over hardcoded logic
+- Cost per evaluation <$0.01
+- Graceful degradation when LLM unavailable
+
+**Sample LLM Prompt**:
+```
+Analyze this fantasy football trade and provide a concise explanation:
+
+Team A gives: [Player A (QB, 45.2 pts)] 
+Team A gets: [Player B (RB, 32.1 pts), Player C (WR, 18.5 pts)]
+
+Context:
+- Team A needs: RB depth (deficit: 8.2 pts), WR2 upgrade (deficit: 4.1 pts)  
+- Team B needs: QB upgrade (deficit: 12.3 pts)
+- Value differential: Team A (+5.4), Team B (-5.4)
+
+Provide 2-3 sentences explaining trade fairness and strategic value.
+```
+
+---
 
 ESPN Usage Rules for Tests
 Use fixtures under tests/fixtures/espn/ for wrapper tests
