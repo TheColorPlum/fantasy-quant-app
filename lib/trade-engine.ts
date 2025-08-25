@@ -121,7 +121,22 @@ export class TradeAnalysisEngine {
     const confidence = this.calculateConfidence(metrics)
     const riskLevel = this.assessRiskLevel(metrics)
     const timeframe = this.determineTimeframe(userGives, userGets)
-    const aggressiveness = calcAggressiveness(userGives as unknown as SandboxPlayer[], userGets as unknown as SandboxPlayer[]) // Calculate aggressiveness
+    // Convert Player[] to SandboxPlayer[] for aggressiveness calculation
+    const givesForCalc = userGives.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      position: p.position as SandboxPlayer['position'], 
+      nflTeam: p.nflTeam || 'FA', 
+      value: p.value || 0 
+    }));
+    const getsForCalc = userGets.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      position: p.position as SandboxPlayer['position'], 
+      nflTeam: p.nflTeam || 'FA', 
+      value: p.value || 0 
+    }));
+    const aggressiveness = calcAggressiveness(givesForCalc, getsForCalc)
 
     const reasoning = this.generateReasoning(userGives, userGets, metrics)
 
