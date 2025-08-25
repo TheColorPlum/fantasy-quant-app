@@ -10,9 +10,13 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 })
     }
 
-    // Get user's analytics data
-    const analytics = await db.tradeAnalyses.getAnalyticsData(user.id)
-    const recentAnalyses = await db.tradeAnalyses.findByUserId(user.id, 5)
+    // Minimal analytics stub - replace when implementing trade analyses
+    const analytics = {
+      totalAnalyses: 0,
+      avgConfidence: 0,
+      topPartners: []
+    }
+    const recentAnalyses: any[] = []
 
     return NextResponse.json({
       success: true,

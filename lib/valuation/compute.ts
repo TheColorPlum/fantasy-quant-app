@@ -366,7 +366,7 @@ export async function saveValuations(result: ValuationResult): Promise<void> {
     leagueId: result.leagueId,
     playerId: valuation.playerId,
     price: valuation.price,
-    components: valuation.components as Prisma.JsonValue,
+    components: valuation.components as unknown as Prisma.InputJsonValue,
     ts: result.computedAt,
     engineVersion: result.engineVersion
   }));

@@ -28,7 +28,10 @@ model League {
   firstLoadedAt   DateTime?
   createdBy       String?
   teams           Team[]
+  TeamClaim       TeamClaim[]
   tradeProposals  TradeProposal[]
+  AuctionPrice    AuctionPrice[]
+  Valuation       Valuation[]
 }
 
 model Team {
@@ -40,6 +43,8 @@ model Team {
   ownerUserId       String?
   proposalsFrom     TradeProposal[] @relation("ProposalsFrom")
   proposalsTo       TradeProposal[] @relation("ProposalsTo")
+  TeamClaim         TeamClaim[]
+  RosterSlot        RosterSlot[]
 
   @@unique([leagueId, espnTeamId])
 }
@@ -50,6 +55,10 @@ model TeamClaim {
   teamId    String
   userId    String
   claimedAt DateTime @default(now())
+
+  // Relations
+  league    League   @relation(fields: [leagueId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
 
   @@unique([leagueId, teamId])
   @@unique([leagueId, userId])
@@ -63,6 +72,11 @@ model Player {
   posEligibility   String[]
   teamAbbr         String?
   tradeItems       TradeItem[]
+  RosterSlot       RosterSlot[]
+  Projection       Projection[]
+  GameLog          GameLog[]
+  AuctionPrice     AuctionPrice[]
+  Valuation        Valuation[]
 }
 
 model RosterSlot {
@@ -71,6 +85,10 @@ model RosterSlot {
   playerId String
   slotType String
   week     Int
+
+  // Relations
+  team     Team   @relation(fields: [teamId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
 }
 
 model Projection {
@@ -82,6 +100,9 @@ model Projection {
   ptsP10    Float?
   ptsP90    Float?
   updatedAt DateTime @default(now())
+  
+  // Relations
+  player    Player   @relation(fields: [playerId], references: [id])
 }
 
 model GameLog {
@@ -91,6 +112,11 @@ model GameLog {
   statsJson Json
   ptsActual Float
   updatedAt DateTime @default(now())
+  
+  // Relations
+  player    Player   @relation(fields: [playerId], references: [id])
+
+  @@unique([playerId, week], name: "playerId_week")
 }
 
 model AuctionPrice {
@@ -100,6 +126,10 @@ model AuctionPrice {
   amount    Float
   source    String
   createdAt DateTime @default(now())
+  
+  // Relations  
+  league    League   @relation(fields: [leagueId], references: [id])
+  player    Player   @relation(fields: [playerId], references: [id])
 }
 
 model ReplacementBaseline {
@@ -110,6 +140,8 @@ model ReplacementBaseline {
   ptsPerGame   Float
   source       String
   updatedAt    DateTime @default(now())
+  
+  @@unique([season, pos])
 }
 
 model Valuation {
@@ -120,6 +152,10 @@ model Valuation {
   components    Json
   engineVersion String
   ts            DateTime @default(now())
+  
+  // Relations
+  league        League   @relation(fields: [leagueId], references: [id])
+  player        Player   @relation(fields: [playerId], references: [id])
 
   @@index([leagueId, playerId, ts])
   @@index([leagueId, engineVersion])
@@ -170,9 +206,9 @@ model TradeItem {
 model ProposalShare {
   id         String        @id @default(cuid())
   proposalId String
-  token      String        @unique
+  tokenHash  String        @unique
+  expiresAt  DateTime
   createdAt  DateTime      @default(now())
-  revokedAt  DateTime?
   
   // Relations
   proposal   TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)

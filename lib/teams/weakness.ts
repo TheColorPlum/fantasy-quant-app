@@ -144,9 +144,10 @@ export async function calculateTeamWeakness(
   let totalNeedScore = 0;
 
   // TDD A9: For each position p, calculate B_p_team and S_p_team
-  for (const [pos, required] of Object.entries(lineupRequirements)) {
+  for (const [pos, requiredValue] of Object.entries(lineupRequirements)) {
     if (pos === 'FLEX') continue; // Handle FLEX separately
-
+    
+    const required = Number(requiredValue);
     const baseline = baselineMap[pos] || 8.0; // R_p (replacement baseline)
     const positionStarters = starters.filter(starter => starter.pos === pos);
     

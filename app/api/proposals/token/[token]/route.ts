@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/database';
+import { hashToken, isExpired, isValidTokenFormat } from '@/lib/share-tokens';
 
 export const runtime = 'nodejs';
 
@@ -13,11 +14,21 @@ export async function GET(
   try {
     const token = params.token;
 
-    // Find the share link
+    // Validate token format
+    if (!isValidTokenFormat(token)) {
+      return NextResponse.json(
+        { error: 'Invalid token format' },
+        { status: 400 }
+      );
+    }
+
+    // Hash the token for database lookup
+    const tokenHash = hashToken(token);
+
+    // Find the share link by hash
     const shareLink = await db.proposalShare.findUnique({
       where: { 
-        token: token,
-        revokedAt: null // Only active links
+        tokenHash: tokenHash
       },
       include: {
         proposal: {
@@ -39,7 +50,15 @@ export async function GET(
 
     if (!shareLink) {
       return NextResponse.json(
-        { error: 'Share link not found or has been revoked' },
+        { error: 'Share link not found or has expired' },
+        { status: 404 }
+      );
+    }
+
+    // Check if the token has expired
+    if (isExpired(shareLink.expiresAt)) {
+      return NextResponse.json(
+        { error: 'Share link not found or has expired' },
         { status: 404 }
       );
     }
@@ -86,9 +105,10 @@ export async function GET(
         isReadOnly: true // Mark as read-only for token access
       },
       shareInfo: {
-        token: shareLink.token,
+        // Never expose the token or tokenHash for security
         createdAt: shareLink.createdAt.toISOString(),
-        isActive: !shareLink.revokedAt
+        expiresAt: shareLink.expiresAt.toISOString(),
+        isActive: !isExpired(shareLink.expiresAt)
       }
     }, {
       headers: {

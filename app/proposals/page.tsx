@@ -463,9 +463,9 @@ export default function ProposalsPage() {
                       <div>
                         <h4 className="font-medium mb-2">You Get</h4>
                         <div className="space-y-1">
-                          {proposal.theirPlayers.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name} ({player.position})
+                          {proposal.items.filter(item => item.direction === 'get').map((item) => (
+                            <div key={item.id} className="text-sm">
+                              {item.playerName} ({item.position})
                             </div>
                           ))}
                         </div>
@@ -473,9 +473,9 @@ export default function ProposalsPage() {
                       <div>
                         <h4 className="font-medium mb-2">You Give</h4>
                         <div className="space-y-1">
-                          {proposal.yourPlayers.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name} ({player.position})
+                          {proposal.items.filter(item => item.direction === 'give').map((item) => (
+                            <div key={item.id} className="text-sm">
+                              {item.playerName} ({item.position})
                             </div>
                           ))}
                         </div>
@@ -518,9 +518,9 @@ export default function ProposalsPage() {
                       </div>
                     )}
 
-                    {proposal.message && (
+                    {proposal.rationale && (
                       <div className="mt-4 p-3 bg-muted rounded-md">
-                        <p className="text-sm">{proposal.message}</p>
+                        <p className="text-sm">{proposal.rationale}</p>
                       </div>
                     )}
                   </CardContent>
@@ -562,9 +562,9 @@ export default function ProposalsPage() {
                       <div>
                         <h4 className="font-medium mb-2">You Give</h4>
                         <div className="space-y-1">
-                          {proposal.yourPlayers.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name} ({player.position})
+                          {proposal.items.filter(item => item.direction === 'give').map((item) => (
+                            <div key={item.id} className="text-sm">
+                              {item.playerName} ({item.position})
                             </div>
                           ))}
                         </div>
@@ -572,9 +572,9 @@ export default function ProposalsPage() {
                       <div>
                         <h4 className="font-medium mb-2">You Get</h4>
                         <div className="space-y-1">
-                          {proposal.theirPlayers.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name} ({player.position})
+                          {proposal.items.filter(item => item.direction === 'get').map((item) => (
+                            <div key={item.id} className="text-sm">
+                              {item.playerName} ({item.position})
                             </div>
                           ))}
                         </div>
@@ -617,9 +617,9 @@ export default function ProposalsPage() {
                       </div>
                     )}
 
-                    {proposal.message && (
+                    {proposal.rationale && (
                       <div className="mt-4 p-3 bg-muted rounded-md">
-                        <p className="text-sm">{proposal.message}</p>
+                        <p className="text-sm">{proposal.rationale}</p>
                       </div>
                     )}
                   </CardContent>
@@ -647,12 +647,12 @@ export default function ProposalsPage() {
                 <div>
                   <h4 className="font-medium mb-3">You Give</h4>
                   <div className="space-y-2">
-                    {selectedProposal.yourPlayers.map((player) => (
-                      <div key={player.id} className="flex justify-between items-center p-2 border rounded">
+                    {selectedProposal.items.filter(item => item.direction === 'give').map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-2 border rounded">
                         <span>
-                          {player.name} ({player.position})
+                          {item.playerName} ({item.position})
                         </span>
-                        <span className="font-mono text-sm">{player.value.toFixed(1)}</span>
+                        <span className="font-mono text-sm">{item.value.toFixed(1)}</span>
                       </div>
                     ))}
                   </div>
@@ -660,12 +660,12 @@ export default function ProposalsPage() {
                 <div>
                   <h4 className="font-medium mb-3">You Get</h4>
                   <div className="space-y-2">
-                    {selectedProposal.theirPlayers.map((player) => (
-                      <div key={player.id} className="flex justify-between items-center p-2 border rounded">
+                    {selectedProposal.items.filter(item => item.direction === 'get').map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-2 border rounded">
                         <span>
-                          {player.name} ({player.position})
+                          {item.playerName} ({item.position})
                         </span>
-                        <span className="font-mono text-sm">{player.value.toFixed(1)}</span>
+                        <span className="font-mono text-sm">{item.value.toFixed(1)}</span>
                       </div>
                     ))}
                   </div>
@@ -675,24 +675,24 @@ export default function ProposalsPage() {
               <div className="flex justify-between text-sm pt-4 border-t">
                 <span>Value Difference:</span>
                 <span
-                  className={`font-mono ${selectedProposal.valueDifferential > 0 ? "text-green-600" : "text-red-600"}`}
+                  className={`font-mono ${selectedProposal.valueDelta.you > 0 ? "text-green-600" : "text-red-600"}`}
                 >
-                  {selectedProposal.valueDifferential > 0 ? "+" : ""}
-                  {selectedProposal.valueDifferential.toFixed(1)}
+                  {selectedProposal.valueDelta.you > 0 ? "+" : ""}
+                  {selectedProposal.valueDelta.you.toFixed(1)}
                 </span>
               </div>
 
-              {selectedProposal.message && (
+              {selectedProposal.rationale && (
                 <div className="p-3 bg-muted rounded-md">
-                  <h4 className="font-medium mb-2">Message</h4>
-                  <p className="text-sm">{selectedProposal.message}</p>
+                  <h4 className="font-medium mb-2">Rationale</h4>
+                  <p className="text-sm">{selectedProposal.rationale}</p>
                   <Button
                     variant="outline"
                     size="sm"
                     className="mt-2 bg-transparent"
-                    onClick={() => copyMessage(selectedProposal.message!, selectedProposal.id)}
+                    onClick={() => copyMessage(selectedProposal.rationale!, selectedProposal.id)}
                   >
-                    {copiedMessage === selectedProposal.id ? "Copied!" : "Copy Message"}
+                    {copiedMessage === selectedProposal.id ? "Copied!" : "Copy Rationale"}
                   </Button>
                 </div>
               )}

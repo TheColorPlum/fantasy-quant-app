@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST as CreateShareLink, DELETE as RevokeShareLink, GET as GetShareLink } from '@/app/api/proposals/[id]/share-link/route';
 import { GET as GetTokenProposal } from '@/app/api/proposals/token/[token]/route';
+import { generateSecureToken, hashToken, createExpirationDate, isExpired, SHARE_LINK_TTL_MS } from '@/lib/share-tokens';
 
 // Mock dependencies
 vi.mock('@/lib/auth', () => ({
@@ -21,16 +22,18 @@ vi.mock('@/lib/database', () => ({
   }
 }));
 
-vi.mock('crypto', () => ({
-  default: {
-    randomBytes: vi.fn()
-  }
+vi.mock('@/lib/share-tokens', () => ({
+  generateSecureToken: vi.fn(),
+  hashToken: vi.fn(),
+  createExpirationDate: vi.fn(),
+  isExpired: vi.fn(),
+  SHARE_LINK_TTL_MS: 7 * 24 * 60 * 60 * 1000
 }));
 
 describe('Proposal Share API', async () => {
   const mockAuth = vi.mocked(await import('@/lib/auth'));
   const mockDb = vi.mocked(await import('@/lib/database')).db;
-  const mockCrypto = vi.mocked(await import('crypto')).default;
+  const mockShareTokens = vi.mocked(await import('@/lib/share-tokens'));
 
   const mockUser = {
     id: 'user-1',
@@ -56,20 +59,31 @@ describe('Proposal Share API', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     
     mockAuth.getSessionUser.mockResolvedValue(mockUser);
-    // Mock randomBytes to return a buffer that when converted to hex gives us our expected token
-    const expectedToken = '6d6f636b6564746f6b656e313233343536373839303132333435363738393031323334353637383930';
-    mockCrypto.randomBytes.mockReturnValue(Buffer.from(expectedToken, 'hex'));
+    
+    // Mock secure token generation
+    const expectedToken = 'abc123XYZ789secure';
+    const expectedHash = 'sha256hash123';
+    const expectedExpiration = new Date(Date.now() + SHARE_LINK_TTL_MS);
+    
+    mockShareTokens.generateSecureToken.mockReturnValue(expectedToken);
+    mockShareTokens.hashToken.mockReturnValue(expectedHash);
+    mockShareTokens.createExpirationDate.mockReturnValue(expectedExpiration);
+    mockShareTokens.isExpired.mockReturnValue(false);
   });
 
   describe('POST /api/proposals/[id]/share-link', () => {
-    it('creates a new share link successfully', async () => {
+    it('creates a new share link successfully with secure token and TTL', async () => {
       mockDb.tradeProposal.findUnique.mockResolvedValue(mockProposal);
       
-      const expectedToken = '6d6f636b6564746f6b656e313233343536373839303132333435363738393031323334353637383930';
+      const expectedToken = 'abc123XYZ789secure';
+      const expectedHash = 'sha256hash123';
+      const expectedExpiration = new Date(Date.now() + SHARE_LINK_TTL_MS);
+      
       const mockShareLink = {
         id: 'share-1',
         proposalId: 'proposal-1',
-        token: expectedToken,
+        tokenHash: expectedHash,
+        expiresAt: expectedExpiration,
         createdAt: new Date()
       };
       
@@ -84,32 +98,52 @@ describe('Proposal Share API', async () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.shareLink.token).toBe(expectedToken);
+      expect(data.shareLink.token).toBe(expectedToken); // Raw token returned for immediate use
       expect(data.shareLink.url).toContain('/proposals?token=');
       expect(data.shareLink.isNew).toBe(true);
+      expect(data.shareLink.expiresAt).toBe(expectedExpiration.toISOString());
       
-      expect(mockCrypto.randomBytes).toHaveBeenCalledWith(32);
+      expect(mockShareTokens.generateSecureToken).toHaveBeenCalledWith(32);
+      expect(mockShareTokens.hashToken).toHaveBeenCalledWith(expectedToken);
+      expect(mockShareTokens.createExpirationDate).toHaveBeenCalled();
       expect(mockDb.proposalShare.create).toHaveBeenCalledWith({
         data: {
           proposalId: 'proposal-1',
-          token: expectedToken
+          tokenHash: expectedHash,
+          expiresAt: expectedExpiration
         }
       });
     });
 
-    it('returns existing share link if already exists', async () => {
-      const existingShare = {
+    it('creates new share link when existing one is expired', async () => {
+      const expiredShare = {
         id: 'share-1',
-        token: 'existing-token',
+        tokenHash: 'old-hash',
+        expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
+        createdAt: new Date(Date.now() - SHARE_LINK_TTL_MS - 1000)
+      };
+
+      const proposalWithExpiredShare = {
+        ...mockProposal,
+        shares: [expiredShare]
+      };
+
+      mockDb.tradeProposal.findUnique.mockResolvedValue(proposalWithExpiredShare);
+      mockShareTokens.isExpired.mockReturnValue(true); // Existing share is expired
+      
+      const expectedToken = 'abc123XYZ789secure';
+      const expectedHash = 'sha256hash123';
+      const expectedExpiration = new Date(Date.now() + SHARE_LINK_TTL_MS);
+      
+      const mockNewShareLink = {
+        id: 'share-2',
+        proposalId: 'proposal-1',
+        tokenHash: expectedHash,
+        expiresAt: expectedExpiration,
         createdAt: new Date()
       };
-
-      const proposalWithShare = {
-        ...mockProposal,
-        shares: [existingShare]
-      };
-
-      mockDb.tradeProposal.findUnique.mockResolvedValue(proposalWithShare);
+      
+      mockDb.proposalShare.create.mockResolvedValue(mockNewShareLink);
 
       const request = new NextRequest('http://localhost:3000/api/proposals/proposal-1/share-link', {
         method: 'POST'
@@ -120,10 +154,10 @@ describe('Proposal Share API', async () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.shareLink.token).toBe('existing-token');
-      expect(data.shareLink.isNew).toBe(false);
+      expect(data.shareLink.token).toBe(expectedToken);
+      expect(data.shareLink.isNew).toBe(true);
       
-      expect(mockDb.proposalShare.create).not.toHaveBeenCalled();
+      expect(mockDb.proposalShare.create).toHaveBeenCalled();
     });
 
     it('returns 401 when user not authenticated', async () => {
@@ -182,7 +216,7 @@ describe('Proposal Share API', async () => {
   });
 
   describe('DELETE /api/proposals/[id]/share-link', () => {
-    it('revokes share links successfully', async () => {
+    it('revokes active share links successfully', async () => {
       mockDb.tradeProposal.findUnique.mockResolvedValue(mockProposal);
       mockDb.proposalShare.updateMany.mockResolvedValue({ count: 1 });
 
@@ -197,13 +231,16 @@ describe('Proposal Share API', async () => {
       expect(data.success).toBe(true);
       expect(data.revokedCount).toBe(1);
       
+      // Should update expiresAt instead of revokedAt for new schema
       expect(mockDb.proposalShare.updateMany).toHaveBeenCalledWith({
         where: {
           proposalId: 'proposal-1',
-          revokedAt: null
+          expiresAt: {
+            gt: expect.any(Date)
+          }
         },
         data: {
-          revokedAt: expect.any(Date)
+          expiresAt: expect.any(Date) // Set to current time to expire immediately
         }
       });
     });
@@ -222,32 +259,35 @@ describe('Proposal Share API', async () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.revokedCount).toBe(0);
-      expect(data.message).toBe('Revoked 0 share link(s)');
+      expect(data.message).toBe('Expired 0 share link(s)');
     });
   });
 
   describe('GET /api/proposals/[id]/share-link', () => {
-    it('returns share link information', async () => {
+    it('returns share link information without exposing token hashes', async () => {
       const activeShare = {
         id: 'share-1',
-        token: 'active-token',
-        createdAt: new Date(),
-        revokedAt: null
+        tokenHash: 'hash1',
+        expiresAt: new Date(Date.now() + SHARE_LINK_TTL_MS),
+        createdAt: new Date()
       };
 
-      const revokedShare = {
+      const expiredShare = {
         id: 'share-2',
-        token: 'revoked-token',
-        createdAt: new Date(),
-        revokedAt: new Date()
+        tokenHash: 'hash2',
+        expiresAt: new Date(Date.now() - 1000), // Expired
+        createdAt: new Date(Date.now() - SHARE_LINK_TTL_MS - 1000)
       };
 
       const proposalWithShares = {
         ...mockProposal,
-        shares: [activeShare, revokedShare]
+        shares: [activeShare, expiredShare]
       };
 
       mockDb.tradeProposal.findUnique.mockResolvedValue(proposalWithShares);
+      mockShareTokens.isExpired
+        .mockReturnValueOnce(false) // Active share
+        .mockReturnValueOnce(true); // Expired share
 
       const request = new NextRequest('http://localhost:3000/api/proposals/proposal-1/share-link');
       const response = await GetShareLink(request, { params: { id: 'proposal-1' } });
@@ -255,27 +295,33 @@ describe('Proposal Share API', async () => {
 
       expect(response.status).toBe(200);
       expect(data.hasActiveLink).toBe(true);
-      expect(data.activeLink.token).toBe('active-token');
-      expect(data.activeLink.url).toContain('/proposals?token=active-token');
+      expect(data.activeLink.tokenHash).toBeUndefined(); // Never expose hash
+      expect(data.activeLink.expiresAt).toBeDefined();
       expect(data.allLinks).toHaveLength(2);
       expect(data.allLinks[0].isActive).toBe(true);
       expect(data.allLinks[1].isActive).toBe(false);
+      
+      // Ensure no token hashes are exposed
+      data.allLinks.forEach(link => {
+        expect(link.tokenHash).toBeUndefined();
+      });
     });
 
-    it('returns no active link when all are revoked', async () => {
-      const revokedShare = {
+    it('returns no active link when all are expired', async () => {
+      const expiredShare = {
         id: 'share-1',
-        token: 'revoked-token',
-        createdAt: new Date(),
-        revokedAt: new Date()
+        tokenHash: 'hash1',
+        expiresAt: new Date(Date.now() - 1000), // Expired
+        createdAt: new Date(Date.now() - SHARE_LINK_TTL_MS - 1000)
       };
 
-      const proposalWithRevokedShares = {
+      const proposalWithExpiredShares = {
         ...mockProposal,
-        shares: [revokedShare]
+        shares: [expiredShare]
       };
 
-      mockDb.tradeProposal.findUnique.mockResolvedValue(proposalWithRevokedShares);
+      mockDb.tradeProposal.findUnique.mockResolvedValue(proposalWithExpiredShares);
+      mockShareTokens.isExpired.mockReturnValue(true); // All shares expired
 
       const request = new NextRequest('http://localhost:3000/api/proposals/proposal-1/share-link');
       const response = await GetShareLink(request, { params: { id: 'proposal-1' } });
@@ -290,12 +336,12 @@ describe('Proposal Share API', async () => {
   });
 
   describe('GET /api/proposals/token/[token]', () => {
-    it('returns proposal for valid token', async () => {
+    it('returns proposal for valid, non-expired token', async () => {
       const mockShareLink = {
         id: 'share-1',
-        token: 'valid-token',
+        tokenHash: 'sha256hash123',
+        expiresAt: new Date(Date.now() + SHARE_LINK_TTL_MS),
         createdAt: new Date(),
-        revokedAt: null,
         proposal: {
           id: 'proposal-1',
           leagueId: 'league-1',
@@ -330,6 +376,8 @@ describe('Proposal Share API', async () => {
       };
 
       mockDb.proposalShare.findUnique.mockResolvedValue(mockShareLink);
+      mockShareTokens.hashToken.mockReturnValue('sha256hash123');
+      mockShareTokens.isExpired.mockReturnValue(false);
 
       const request = new NextRequest('http://localhost:3000/api/proposals/token/valid-token');
       const response = await GetTokenProposal(request, { params: { token: 'valid-token' } });
@@ -338,13 +386,13 @@ describe('Proposal Share API', async () => {
       expect(response.status).toBe(200);
       expect(data.proposal.id).toBe('proposal-1');
       expect(data.proposal.isReadOnly).toBe(true);
-      expect(data.shareInfo.token).toBe('valid-token');
       expect(data.shareInfo.isActive).toBe(true);
       
+      // Verify token was hashed before DB lookup
+      expect(mockShareTokens.hashToken).toHaveBeenCalledWith('valid-token');
       expect(mockDb.proposalShare.findUnique).toHaveBeenCalledWith({
         where: {
-          token: 'valid-token',
-          revokedAt: null
+          tokenHash: 'sha256hash123'
         },
         include: expect.any(Object)
       });
@@ -352,33 +400,55 @@ describe('Proposal Share API', async () => {
 
     it('returns 404 for invalid token', async () => {
       mockDb.proposalShare.findUnique.mockResolvedValue(null);
+      mockShareTokens.hashToken.mockReturnValue('invalid-hash');
 
       const request = new NextRequest('http://localhost:3000/api/proposals/token/invalid-token');
       const response = await GetTokenProposal(request, { params: { token: 'invalid-token' } });
       const data = await response.json();
 
       expect(response.status).toBe(404);
-      expect(data.error).toBe('Share link not found or has been revoked');
+      expect(data.error).toBe('Share link not found or has expired');
+      
+      expect(mockShareTokens.hashToken).toHaveBeenCalledWith('invalid-token');
+      expect(mockDb.proposalShare.findUnique).toHaveBeenCalledWith({
+        where: {
+          tokenHash: 'invalid-hash'
+        },
+        include: expect.any(Object)
+      });
     });
 
-    it('returns 404 for revoked token', async () => {
-      // Mock should return null for revoked tokens due to WHERE clause
-      mockDb.proposalShare.findUnique.mockResolvedValue(null);
+    it('returns 404 for expired token', async () => {
+      const expiredShareLink = {
+        id: 'share-1',
+        tokenHash: 'sha256hash123',
+        expiresAt: new Date(Date.now() - 1000), // Expired
+        createdAt: new Date(Date.now() - SHARE_LINK_TTL_MS - 1000),
+        proposal: {
+          id: 'proposal-1'
+        }
+      };
+      
+      mockDb.proposalShare.findUnique.mockResolvedValue(expiredShareLink);
+      mockShareTokens.hashToken.mockReturnValue('sha256hash123');
+      mockShareTokens.isExpired.mockReturnValue(true); // Token is expired
 
-      const request = new NextRequest('http://localhost:3000/api/proposals/token/revoked-token');
-      const response = await GetTokenProposal(request, { params: { token: 'revoked-token' } });
+      const request = new NextRequest('http://localhost:3000/api/proposals/token/expired-token');
+      const response = await GetTokenProposal(request, { params: { token: 'expired-token' } });
       const data = await response.json();
 
       expect(response.status).toBe(404);
-      expect(data.error).toBe('Share link not found or has been revoked');
+      expect(data.error).toBe('Share link not found or has expired');
+      
+      expect(mockShareTokens.isExpired).toHaveBeenCalledWith(expiredShareLink.expiresAt);
     });
 
     it('includes proper cache headers', async () => {
       const mockShareLink = {
         id: 'share-1',
-        token: 'valid-token',
+        tokenHash: 'sha256hash123',
+        expiresAt: new Date(Date.now() + SHARE_LINK_TTL_MS),
         createdAt: new Date(),
-        revokedAt: null,
         proposal: {
           id: 'proposal-1',
           leagueId: 'league-1',
@@ -403,6 +473,8 @@ describe('Proposal Share API', async () => {
       };
 
       mockDb.proposalShare.findUnique.mockResolvedValue(mockShareLink);
+      mockShareTokens.hashToken.mockReturnValue('sha256hash123');
+      mockShareTokens.isExpired.mockReturnValue(false);
 
       const request = new NextRequest('http://localhost:3000/api/proposals/token/valid-token');
       const response = await GetTokenProposal(request, { params: { token: 'valid-token' } });
@@ -412,12 +484,15 @@ describe('Proposal Share API', async () => {
   });
 
   describe('Share Link Security', () => {
-    it('generates cryptographically secure tokens', async () => {
+    it('generates base62 tokens with SHA256 hashing and TTL', async () => {
       mockDb.tradeProposal.findUnique.mockResolvedValue(mockProposal);
+      const expectedExpiration = new Date(Date.now() + SHARE_LINK_TTL_MS);
+      
       mockDb.proposalShare.create.mockResolvedValue({
         id: 'share-1',
         proposalId: 'proposal-1',
-        token: 'secure-random-token',
+        tokenHash: 'sha256hash123',
+        expiresAt: expectedExpiration,
         createdAt: new Date()
       });
 
@@ -427,15 +502,17 @@ describe('Proposal Share API', async () => {
 
       await CreateShareLink(request, { params: { id: 'proposal-1' } });
 
-      expect(mockCrypto.randomBytes).toHaveBeenCalledWith(32);
+      expect(mockShareTokens.generateSecureToken).toHaveBeenCalledWith(32);
+      expect(mockShareTokens.hashToken).toHaveBeenCalled();
+      expect(mockShareTokens.createExpirationDate).toHaveBeenCalled();
     });
 
-    it('does not expose sensitive data in token view', async () => {
+    it('does not expose token hashes or sensitive data in shared proposals', async () => {
       const mockShareLink = {
         id: 'share-1',
-        token: 'valid-token',
+        tokenHash: 'sha256hash123',
+        expiresAt: new Date(Date.now() + SHARE_LINK_TTL_MS),
         createdAt: new Date(),
-        revokedAt: null,
         proposal: {
           id: 'proposal-1',
           leagueId: 'league-1',
@@ -467,6 +544,45 @@ describe('Proposal Share API', async () => {
 
       expect(data.proposal.isReadOnly).toBe(true);
       expect(data.proposal.userAccess).toBeUndefined(); // No user access info for token view
+      expect(data.shareInfo.tokenHash).toBeUndefined(); // Never expose hash
+      expect(data.shareInfo.isActive).toBe(true);
+    });
+    it('enforces TTL - expired tokens return 404', async () => {
+      const expiredShareLink = {
+        id: 'share-1',
+        tokenHash: 'sha256hash123',
+        expiresAt: new Date(Date.now() - 1000), // 1 second ago
+        createdAt: new Date(Date.now() - SHARE_LINK_TTL_MS - 1000),
+        proposal: { id: 'proposal-1' }
+      };
+      
+      mockDb.proposalShare.findUnique.mockResolvedValue(expiredShareLink);
+      mockShareTokens.hashToken.mockReturnValue('sha256hash123');
+      mockShareTokens.isExpired.mockReturnValue(true);
+
+      const request = new NextRequest('http://localhost:3000/api/proposals/token/expired-token');
+      const response = await GetTokenProposal(request, { params: { token: 'expired-token' } });
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe('Share link not found or has expired');
+      expect(mockShareTokens.isExpired).toHaveBeenCalledWith(expiredShareLink.expiresAt);
+    });
+
+    it('hashes tokens before database lookup for security', async () => {
+      mockDb.proposalShare.findUnique.mockResolvedValue(null);
+      mockShareTokens.hashToken.mockReturnValue('computed-hash');
+
+      const request = new NextRequest('http://localhost:3000/api/proposals/token/test-token');
+      await GetTokenProposal(request, { params: { token: 'test-token' } });
+
+      expect(mockShareTokens.hashToken).toHaveBeenCalledWith('test-token');
+      expect(mockDb.proposalShare.findUnique).toHaveBeenCalledWith({
+        where: {
+          tokenHash: 'computed-hash'
+        },
+        include: expect.any(Object)
+      });
     });
   });
 });

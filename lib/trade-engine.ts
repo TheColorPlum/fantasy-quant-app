@@ -87,7 +87,7 @@ export class TradeAnalysisEngine {
           out: 1.0,
           ir: 1.0,
         }
-        return risk + (injuryMultiplier[player.injuryStatus] || 0)
+        return risk + (injuryMultiplier[player.injuryStatus as keyof typeof injuryMultiplier] || 0)
       }, 0) / allPlayers.length
 
     // Mock schedule strength and bye week impact
@@ -106,7 +106,7 @@ export class TradeAnalysisEngine {
   private calculateByeWeekImpact(players: Player[]): number {
     const currentWeek = 12 // Mock current week
     const upcomingByes = players.filter(
-      (player) => player.byeWeek > currentWeek && player.byeWeek <= currentWeek + 4,
+      (player) => player.byeWeek && player.byeWeek > currentWeek && player.byeWeek <= currentWeek + 4,
     ).length
 
     return upcomingByes / players.length
