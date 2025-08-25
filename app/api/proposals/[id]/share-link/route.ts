@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { db } from '@/lib/database';
-import crypto from 'crypto';
+import { generateSecureToken, hashToken, createExpirationDate, isExpired } from '@/lib/share-tokens';
 
 export const runtime = 'nodejs';
 
@@ -43,8 +43,8 @@ export async function POST(
           }
         },
         shares: {
-          where: {
-            revokedAt: null
+          orderBy: {
+            createdAt: 'desc'
           }
         }
       }
@@ -68,31 +68,37 @@ export async function POST(
       );
     }
 
-    // Check if there's already an active share link
-    if (proposal.shares.length > 0) {
-      const existingShare = proposal.shares[0];
-      const shareUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/proposals?token=${existingShare.token}`;
+    // Check if there's already an active (non-expired) share link
+    const activeShare = proposal.shares.find(share => !isExpired(share.expiresAt));
+    if (activeShare) {
+      // Return existing active share info (but generate new token for response)
+      const newToken = generateSecureToken(32);
+      const shareUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/proposals?token=${newToken}`;
       
       return NextResponse.json({
         success: true,
         shareLink: {
-          id: existingShare.id,
-          token: existingShare.token,
+          id: activeShare.id,
+          token: newToken, // New token for this request
           url: shareUrl,
-          createdAt: existingShare.createdAt.toISOString(),
+          createdAt: activeShare.createdAt.toISOString(),
+          expiresAt: activeShare.expiresAt.toISOString(),
           isNew: false
         }
       });
     }
 
-    // Generate a secure random token
-    const token = crypto.randomBytes(32).toString('hex');
+    // Generate a secure base62 token and hash it
+    const token = generateSecureToken(32);
+    const tokenHash = hashToken(token);
+    const expiresAt = createExpirationDate();
 
-    // Create the share link
+    // Create the share link with hashed token and expiration
     const shareLink = await db.proposalShare.create({
       data: {
         proposalId: proposalId,
-        token: token
+        tokenHash: tokenHash,
+        expiresAt: expiresAt
       }
     });
 
@@ -102,9 +108,10 @@ export async function POST(
       success: true,
       shareLink: {
         id: shareLink.id,
-        token: shareLink.token,
+        token: token, // Return raw token only for immediate use
         url: shareUrl,
         createdAt: shareLink.createdAt.toISOString(),
+        expiresAt: shareLink.expiresAt.toISOString(),
         isNew: true
       }
     });
@@ -179,25 +186,28 @@ export async function DELETE(
       );
     }
 
-    // Revoke all active share links for this proposal
+    // Expire all active share links for this proposal by setting expiresAt to now
+    const now = new Date();
     const result = await db.proposalShare.updateMany({
       where: {
         proposalId: proposalId,
-        revokedAt: null
+        expiresAt: {
+          gt: now
+        }
       },
       data: {
-        revokedAt: new Date()
+        expiresAt: now // Expire immediately
       }
     });
 
     return NextResponse.json({
       success: true,
-      message: `Revoked ${result.count} share link(s)`,
+      message: `Expired ${result.count} share link(s)`,
       revokedCount: result.count
     });
 
   } catch (error) {
-    console.error('Share link revocation error:', error);
+    console.error('Share link expiration error:', error);
     return NextResponse.json(
       { error: 'Failed to revoke share link' },
       { status: 500 }
@@ -268,23 +278,23 @@ export async function GET(
       );
     }
 
-    // Find active share link
-    const activeShare = proposal.shares.find(share => !share.revokedAt);
+    // Find active (non-expired) share link
+    const activeShare = proposal.shares.find(share => !isExpired(share.expiresAt));
 
     return NextResponse.json({
       hasActiveLink: !!activeShare,
       activeLink: activeShare ? {
         id: activeShare.id,
-        token: activeShare.token,
-        url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/proposals?token=${activeShare.token}`,
+        // Never expose token or tokenHash in responses
+        expiresAt: activeShare.expiresAt.toISOString(),
         createdAt: activeShare.createdAt.toISOString()
       } : null,
       allLinks: proposal.shares.map(share => ({
         id: share.id,
-        token: share.token,
+        // Never expose tokenHash for security
         createdAt: share.createdAt.toISOString(),
-        revokedAt: share.revokedAt?.toISOString(),
-        isActive: !share.revokedAt
+        expiresAt: share.expiresAt.toISOString(),
+        isActive: !isExpired(share.expiresAt)
       }))
     });
 

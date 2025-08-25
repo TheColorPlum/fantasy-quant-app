@@ -76,7 +76,7 @@ export default function ActivityPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-[12px] uppercase">League Activity</CardTitle>
               <div className="flex items-center gap-2">
-                <Select value={type} onValueChange={(v) => setType(v as ActivityType)}>
+                <Select value={type} onValueChange={(v: string) => setType(v as ActivityType)}>
                   <SelectTrigger
                     className="h-7 rounded-[2px] border text-[12px] px-2"
                     style={{ borderColor: "#2E2E2E", background: "#0E0F11", color: "#B0B6C0" }}

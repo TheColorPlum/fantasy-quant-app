@@ -16,7 +16,7 @@ interface ToastOptions {
 // Import from the useToast hook
 import { toast } from '@/hooks/use-toast';
 
-export interface CopyButtonProps extends Omit<ButtonProps, 'onClick'> {
+export interface CopyButtonProps extends Omit<ButtonProps, 'onClick' | 'onCopy'> {
   text: string
   successMessage?: string
   onCopy?: (text: string) => void
